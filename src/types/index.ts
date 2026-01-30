@@ -29,6 +29,7 @@ export interface Trends {
 export interface ActionItem {
   id: string;
   borrower: string;
+  borrowerEmail?: string;
   priority: 'High' | 'Medium' | 'Low';
   amount: number;
   daysPastDue: number;

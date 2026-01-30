@@ -24,6 +24,9 @@ export interface EmailFormData {
   subject: string;
   body: string;
   priority: EmailPriority;
+  cc?: string;
+  bcc?: string;
+  addToConversationLog?: boolean;
 }
 
 export interface Message {

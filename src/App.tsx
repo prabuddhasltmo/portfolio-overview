@@ -13,11 +13,14 @@ import AskAIChat from './components/Dashboard/AskAIChat';
 import ActionItems from './components/Dashboard/ActionItems';
 import CardBox from './components/Dashboard/CardBox';
 import NoDataForPeriodCard from './components/Dashboard/NoDataForPeriodCard';
+import ReportMockupModal from './components/Dashboard/ReportMockupModal';
+import SelectBorrowersForReportModal from './components/Dashboard/SelectBorrowersForReportModal';
 import { DraftEmailModal, SendMessageModal } from './components/Email';
 import { portfolioData as fallbackData, historicalPortfolioData as fallbackHistorical } from './data/mockData';
 import { fetchPortfolioData, fetchScenarios, switchScenario, type Scenario, type PortfolioResponse } from './services/openai';
 import type { PortfolioData } from './types';
 import type { EmailDraftContext } from './types/email';
+import type { ReportMockupType, ReportMockupContext } from './types/reportMockup';
 import portfolioRecapTheme from './portfolioRecapTheme';
 import { periodKey, parsePeriodKey } from './constants/periods';
 
@@ -32,6 +35,11 @@ function App() {
   const [draftEmailOpen, setDraftEmailOpen] = useState(false);
   const [sendMessageContext, setSendMessageContext] = useState<EmailDraftContext | null>(null);
   const [sendMessageOpen, setSendMessageOpen] = useState(false);
+  const [reportMockupOpen, setReportMockupOpen] = useState(false);
+  const [reportMockupType, setReportMockupType] = useState<ReportMockupType>('late_notices');
+  const [reportMockupContext, setReportMockupContext] = useState<ReportMockupContext | null>(null);
+  const [selectBorrowersOpen, setSelectBorrowersOpen] = useState(false);
+  const [reportTypeForSelection, setReportTypeForSelection] = useState<ReportMockupType | null>(null);
 
   const rawCurrent: PortfolioData = portfolio?.current || fallbackData;
   const rawHistorical: PortfolioData[] = portfolio?.historical || fallbackHistorical;
@@ -114,6 +122,31 @@ function App() {
   const closeSendMessage = () => {
     setSendMessageOpen(false);
     setSendMessageContext(null);
+  };
+
+  const openSelectBorrowersForReport = (reportType: ReportMockupType) => {
+    setReportTypeForSelection(reportType);
+    setSelectBorrowersOpen(true);
+  };
+
+  const closeSelectBorrowers = () => {
+    setSelectBorrowersOpen(false);
+    setReportTypeForSelection(null);
+  };
+
+  const handleViewReportFromSelect = (selectedContexts: ReportMockupContext[]) => {
+    const reportType = reportTypeForSelection;
+    closeSelectBorrowers();
+    if (selectedContexts.length > 0 && reportType) {
+      setReportMockupType(reportType);
+      setReportMockupContext(selectedContexts[0]);
+      setReportMockupOpen(true);
+    }
+  };
+
+  const closeReportMockup = () => {
+    setReportMockupOpen(false);
+    setReportMockupContext(null);
   };
 
   return (
@@ -236,7 +269,7 @@ function App() {
                     <ActionItems
                       items={currentData.actionItems}
                       onMessageClick={openSendMessage}
-                      onEmailClick={openDraftEmail}
+                      onReportTypeChoose={openSelectBorrowersForReport}
                     />
                   </Box>
 
@@ -265,6 +298,23 @@ function App() {
           open={sendMessageOpen}
           onClose={closeSendMessage}
           context={sendMessageContext}
+        />
+      )}
+      {reportTypeForSelection && (
+        <SelectBorrowersForReportModal
+          open={selectBorrowersOpen}
+          onClose={closeSelectBorrowers}
+          reportType={reportTypeForSelection}
+          items={currentData.actionItems}
+          onViewReport={handleViewReportFromSelect}
+        />
+      )}
+      {reportMockupContext && (
+        <ReportMockupModal
+          open={reportMockupOpen}
+          onClose={closeReportMockup}
+          reportType={reportMockupType}
+          context={reportMockupContext}
         />
       )}
     </ThemeProvider>

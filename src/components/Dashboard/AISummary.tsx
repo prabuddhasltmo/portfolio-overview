@@ -28,6 +28,13 @@ export default function AISummary({ data, historicalData, refreshTrigger }: AISu
     (theme.palette as { blue?: string }).blue ??
     theme.palette.primary.main;
 
+  const sentimentColor =
+    sentiment === 'good'
+      ? theme.palette.success.main
+      : sentiment === 'bad'
+        ? theme.palette.error.main
+        : theme.palette.warning.main;
+
   useEffect(() => {
     const fetchSummary = async () => {
       setLoading(true);
@@ -172,13 +179,13 @@ export default function AISummary({ data, historicalData, refreshTrigger }: AISu
               px: 1.5,
               backgroundColor: neutral?.[50],
               borderRadius: '6px',
-              border: `1px solid ${neutral?.[200]}`,
+              border: `0.5px solid ${sentimentColor}`,
             }}
           >
             <LightbulbOutlinedIcon
               sx={{
                 fontSize: '1.125rem',
-                color: sentiment === 'bad' ? theme.palette.error.main : theme.palette.warning?.main ?? '#f59e0b',
+                color: sentimentColor,
                 mt: '1px',
               }}
             />

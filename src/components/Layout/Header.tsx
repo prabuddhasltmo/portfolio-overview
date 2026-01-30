@@ -143,19 +143,43 @@ export default function Header({ month, year, onRefresh, scenarios = [], onScena
                 onChange={(e) => onScenarioChange?.(e.target.value)}
                 sx={{
                   fontSize: 13,
-                  color: 'warning.dark',
-                  bgcolor: 'warning.light',
+                  color:
+                    activeScenario?.id === 'trending-up'
+                      ? 'success.dark'
+                      : activeScenario?.id === 'trending-down'
+                        ? 'error.dark'
+                        : 'warning.dark',
+                  bgcolor:
+                    activeScenario?.id === 'trending-up'
+                      ? 'success.light'
+                      : activeScenario?.id === 'trending-down'
+                        ? 'error.light'
+                        : 'warning.light',
                   border: `1px solid`,
-                  borderColor: 'warning.main',
+                  borderColor:
+                    activeScenario?.id === 'trending-up'
+                      ? 'success.main'
+                      : activeScenario?.id === 'trending-down'
+                        ? 'error.main'
+                        : 'warning.main',
                   borderRadius: 1,
                   '& .MuiSelect-select': { py: 0.75, display: 'flex', alignItems: 'center', gap: 0.75 },
                 }}
-                renderValue={(value) => (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                    <FlaskConical size={14} />
-                    {scenarios.find((s) => s.id === value)?.name ?? value}
-                  </Box>
-                )}
+                renderValue={(value) => {
+                  const selected = scenarios.find((s) => s.id === value);
+                  const scenarioColor =
+                    selected?.id === 'trending-up'
+                      ? theme.palette.success.main
+                      : selected?.id === 'trending-down'
+                        ? theme.palette.error.main
+                        : theme.palette.warning.main;
+                  return (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <FlaskConical size={14} color={scenarioColor} />
+                      {selected?.name ?? value}
+                    </Box>
+                  );
+                }}
               >
                 {scenarios.map((s) => (
                   <MenuItem key={s.id} value={s.id} sx={{ fontSize: 13 }}>

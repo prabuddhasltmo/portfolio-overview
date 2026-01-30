@@ -36,7 +36,9 @@ export default function AskAIChat({ portfolioData, historicalData }: AskAIChatPr
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }, [messages]);
 
   const handleSend = async (question?: string) => {

@@ -41,7 +41,7 @@ const listScenarios = () => {
 };
 
 const getClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
   if (!apiKey) return null;
   return new OpenAI({ apiKey });
 };

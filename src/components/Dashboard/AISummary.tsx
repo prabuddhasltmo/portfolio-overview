@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import { Box, Typography, Chip, IconButton, Tooltip, Skeleton } from '@mui/material';
+import { useTheme, alpha } from '@mui/material/styles';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import type { PortfolioData, Sentiment } from '../../types';
 import { generateAISummary } from '../../services/openai';
 import { mockAISummary, mockSentiment, mockKeyTakeaway } from '../../data/mockData';
+import CardBox from './CardBox';
 
 interface AISummaryProps {
   data: PortfolioData;
@@ -10,18 +15,18 @@ interface AISummaryProps {
   refreshTrigger?: number;
 }
 
-const sentimentColors: Record<Sentiment, string> = {
-  good: 'text-green-700 bg-green-50 border-green-200',
-  neutral: 'text-yellow-700 bg-yellow-50 border-yellow-200',
-  bad: 'text-red-700 bg-red-50 border-red-200',
-};
-
 export default function AISummary({ data, historicalData, refreshTrigger }: AISummaryProps) {
   const [summary, setSummary] = useState<string>(mockAISummary);
   const [sentiment, setSentiment] = useState<Sentiment>(mockSentiment);
   const [keyTakeaway, setKeyTakeaway] = useState<string>(mockKeyTakeaway);
   const [loading, setLoading] = useState(false);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
+  const theme = useTheme();
+  const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
+  const blueColor =
+    (theme.palette as { ui?: { iconBlue?: string }; blue?: string }).ui?.iconBlue ??
+    (theme.palette as { blue?: string }).blue ??
+    theme.palette.primary.main;
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -61,58 +66,148 @@ export default function AISummary({ data, historicalData, refreshTrigger }: AISu
     }
   };
 
-  // Highlight key metrics in the summary
-  const formatSummary = (text: string) => {
-    return text.replace(
-      /(\$[\d,]+\.?\d*|\d+(?:,\d{3})*(?:\.\d+)?%?)/g,
-      '<strong class="text-blue-700 font-semibold">$1</strong>'
-    );
-  };
-
   return (
-    <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0">
-          <div className="w-7 h-7 bg-violet-100 rounded flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-violet-600" />
-          </div>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-sm font-semibold text-violet-700">AI Summary</h2>
-            {isAIGenerated && (
-              <span className="text-[10px] bg-violet-200 text-violet-700 px-1.5 py-0.5 rounded-full font-medium">
-                Live
-              </span>
-            )}
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="ml-auto p-1 text-violet-500 hover:text-violet-700 hover:bg-violet-100 rounded disabled:opacity-50"
-              title="Regenerate summary"
-            >
-              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
-          {loading ? (
-            <div className="space-y-1.5">
-              <div className="h-3.5 bg-violet-200 rounded animate-pulse w-full"></div>
-              <div className="h-3.5 bg-violet-200 rounded animate-pulse w-5/6"></div>
-              <div className="h-3.5 bg-violet-200 rounded animate-pulse w-4/6"></div>
-            </div>
-          ) : (
-            <>
-              <p
-                className="text-[13px] text-slate-700 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: formatSummary(summary) }}
-              />
-              <div className={`mt-3 px-3 py-2 rounded-md border ${sentimentColors[sentiment]}`}>
-                <p className="text-[12px] font-medium">{keyTakeaway}</p>
-              </div>
-            </>
+    <CardBox
+      customSx={{
+        padding: 2,
+        borderRadius: 2,
+        backgroundColor: alpha(theme.palette.common.white, 0.82),
+        flexDirection: 'column',
+      }}
+    >
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              backgroundColor: alpha(blueColor, 0.08),
+              borderRadius: '8px',
+              padding: '10px',
+            }}
+          >
+            <AutoAwesomeIcon sx={{ fontSize: '1.25rem', color: blueColor }} />
+          </Box>
+          <Typography
+            sx={{
+              color: neutral?.[900],
+              fontWeight: 400,
+              fontSize: '1.125rem',
+              lineHeight: '24px',
+            }}
+          >
+            AI Summary
+          </Typography>
+          {isAIGenerated && (
+            <Chip
+              label="Live"
+              size="small"
+              sx={{
+                fontSize: '10px',
+                height: 18,
+                backgroundColor: alpha(blueColor, 0.16),
+                color: blueColor,
+                fontWeight: 500,
+              }}
+            />
           )}
-        </div>
-      </div>
-    </div>
+          <Tooltip title="Regenerate summary">
+            <span>
+              <IconButton
+                onClick={handleRefresh}
+                disabled={loading}
+                sx={{
+                  marginLeft: 'auto',
+                  color: blueColor,
+                  '&:hover': { backgroundColor: alpha(blueColor, 0.1) },
+                }}
+                size="small"
+              >
+                <RefreshIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+
+        <Box
+          sx={{
+            p: 2,
+            backgroundColor: alpha(blueColor, 0.04),
+            borderRadius: '6px',
+            borderLeft: `3px solid ${blueColor}`,
+          }}
+        >
+          {loading ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Skeleton variant="text" width="100%" />
+              <Skeleton variant="text" width="85%" />
+              <Skeleton variant="text" width="70%" />
+            </Box>
+          ) : (
+            <Typography
+              sx={{
+                fontSize: '0.875rem',
+                lineHeight: 1.5,
+                color: neutral?.[700],
+                fontWeight: 400,
+              }}
+            >
+              {summary}
+            </Typography>
+          )}
+        </Box>
+
+        {!loading && keyTakeaway && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 1.5,
+              py: 1.25,
+              px: 1.5,
+              backgroundColor: neutral?.[50],
+              borderRadius: '6px',
+              border: `1px solid ${neutral?.[200]}`,
+            }}
+          >
+            <LightbulbOutlinedIcon
+              sx={{
+                fontSize: '1.125rem',
+                color: sentiment === 'bad' ? theme.palette.error.main : theme.palette.warning?.main ?? '#f59e0b',
+                mt: '1px',
+              }}
+            />
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: '0.6875rem',
+                  lineHeight: '14px',
+                  color: neutral?.[500],
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  mb: 0.5,
+                }}
+              >
+                Key Takeaway
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '0.875rem',
+                  lineHeight: 1.5,
+                  color: neutral?.[800],
+                  fontWeight: 400,
+                }}
+              >
+                {keyTakeaway}
+              </Typography>
+            </Box>
+          </Box>
+        )}
+      </Box>
+    </CardBox>
   );
 }

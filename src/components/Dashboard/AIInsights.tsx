@@ -1,37 +1,73 @@
 import { useState, useEffect } from 'react';
-import { Lightbulb, RefreshCw } from 'lucide-react';
+import { Box, Typography, Chip, IconButton, Tooltip, Alert, Skeleton } from '@mui/material';
+import { useTheme, alpha } from '@mui/material/styles';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import type { Theme } from '@mui/material/styles';
 import type { PortfolioData, AIInsight } from '../../types';
 import { generateAIInsights } from '../../services/openai';
 import { mockAIInsights } from '../../data/mockData';
+import CardBox from './CardBox';
 
 interface AIInsightsProps {
   data: PortfolioData;
   refreshTrigger?: number;
 }
 
-const categoryColors: Record<string, { bg: string; text: string }> = {
-  Performance: {
-    bg: 'bg-green-100',
-    text: 'text-green-700',
-  },
-  Delinquency: {
-    bg: 'bg-blue-100',
-    text: 'text-blue-700',
-  },
-  Risk: {
-    bg: 'bg-red-100',
-    text: 'text-red-700',
-  },
-  Opportunity: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-700',
-  },
+const getSeverityColor = (severity: string, theme: Theme) => {
+  switch (severity.toLowerCase()) {
+    case 'critical':
+      return theme.palette.error.main;
+    case 'warning':
+      return theme.palette.warning.main;
+    case 'positive':
+      return (theme.palette as { green?: { dark: string } }).green?.dark ?? '#4CAF50';
+    default:
+      return theme.palette.primary.main;
+  }
+};
+
+const getCategoryColor = (category: string, theme: Theme) => {
+  switch (category.toLowerCase()) {
+    case 'collections':
+      return (theme.palette as { green?: { dark: string } }).green?.dark ?? '#4CAF50';
+    case 'delinquency':
+      return theme.palette.error.main;
+    case 'risk':
+      return theme.palette.warning.main;
+    case 'performance':
+      return theme.palette.primary.main;
+    case 'opportunity':
+      return (theme.palette as { tealBlue?: { main: string } }).tealBlue?.main ?? '#0E7E88';
+    default:
+      return (theme.palette as { neutral?: Record<string, string> }).neutral?.[500] ?? '#6B7280';
+  }
+};
+
+const getInsightSeverity = (category: string) => {
+  switch (category.toLowerCase()) {
+    case 'risk':
+      return 'Critical';
+    case 'delinquency':
+      return 'Warning';
+    case 'opportunity':
+      return 'Positive';
+    default:
+      return 'Info';
+  }
 };
 
 export default function AIInsights({ data, refreshTrigger }: AIInsightsProps) {
   const [insights, setInsights] = useState<AIInsight[]>(mockAIInsights);
   const [loading, setLoading] = useState(false);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
+  const theme = useTheme();
+  const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
+  const blueColor =
+    (theme.palette as { ui?: { iconBlue?: string }; blue?: string }).ui?.iconBlue ??
+    (theme.palette as { blue?: string }).blue ??
+    theme.palette.primary.main;
 
   useEffect(() => {
     const fetchInsights = async () => {
@@ -66,62 +102,150 @@ export default function AIInsights({ data, refreshTrigger }: AIInsightsProps) {
   };
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 bg-amber-100 rounded flex items-center justify-center">
-          <Lightbulb className="w-4 h-4 text-amber-600" />
-        </div>
-        <h3 className="text-sm font-semibold text-slate-800">AI Insights</h3>
-        <span className="text-xs text-slate-500">({insights.length})</span>
-        {isAIGenerated && (
-          <span className="text-[10px] bg-amber-200 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-            Live
-          </span>
-        )}
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="ml-auto p-1 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded disabled:opacity-50"
-          title="Regenerate insights"
-        >
-          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
+    <CardBox
+      customSx={{
+        padding: 2,
+        borderRadius: 2,
+        backgroundColor: alpha(theme.palette.common.white, 0.82),
+        border: `1px solid ${alpha(blueColor, 0.2)}`,
+        boxShadow: `0 2px 8px ${alpha(blueColor, 0.08)}`,
+      }}
+    >
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              backgroundColor: alpha(blueColor, 0.1),
+              borderRadius: '8px',
+              padding: '10px',
+            }}
+          >
+            <LightbulbIcon sx={{ fontSize: '20px', color: blueColor, position: 'relative', zIndex: 1 }} />
+            <AutoAwesomeIcon
+              sx={{
+                fontSize: '12px',
+                color: blueColor,
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                zIndex: 2,
+                opacity: 0.9,
+              }}
+            />
+          </Box>
+          <Typography sx={{ color: blueColor, fontWeight: 500, fontSize: '18px', lineHeight: '24px' }}>
+            AI Insights ({insights.length})
+          </Typography>
+          {isAIGenerated && (
+            <Chip
+              label="Live"
+              size="small"
+              sx={{
+                fontSize: '10px',
+                height: 18,
+                backgroundColor: alpha(blueColor, 0.16),
+                color: blueColor,
+                fontWeight: 500,
+              }}
+            />
+          )}
+          <Tooltip title="Regenerate insights">
+            <span>
+              <IconButton
+                onClick={handleRefresh}
+                disabled={loading}
+                sx={{
+                  marginLeft: 'auto',
+                  color: blueColor,
+                  '&:hover': { backgroundColor: alpha(blueColor, 0.1) },
+                }}
+                size="small"
+              >
+                <RefreshIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
 
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white rounded p-3 space-y-1.5">
-              <div className="h-3.5 bg-amber-200 rounded animate-pulse w-3/4"></div>
-              <div className="h-3 bg-amber-100 rounded animate-pulse w-full"></div>
-              <div className="h-3 bg-amber-100 rounded animate-pulse w-5/6"></div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {insights.map((insight) => {
-            const colors = categoryColors[insight.category] || categoryColors.Performance;
-            return (
-              <div key={insight.id} className="bg-white rounded p-3">
-                <div className="flex items-start gap-2 mb-1">
-                  <h4 className="text-[13px] font-semibold text-slate-800 flex-1">
-                    {insight.title}
-                  </h4>
-                  <span
-                    className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}
-                  >
-                    {insight.category}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {insight.description}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+        {loading ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <Box
+                key={i}
+                sx={{
+                  p: 1.5,
+                  backgroundColor: neutral?.[50],
+                  borderRadius: '4px',
+                }}
+              >
+                <Skeleton variant="text" width="70%" />
+                <Skeleton variant="text" width="100%" />
+                <Skeleton variant="text" width="85%" />
+              </Box>
+            ))}
+          </Box>
+        ) : insights.length === 0 ? (
+          <Alert
+            severity="info"
+            sx={{
+              backgroundColor: neutral?.[50],
+              '& .MuiAlert-icon': { color: blueColor },
+            }}
+          >
+            AI Insights are currently unavailable. Portfolio metrics above are calculated from real data.
+          </Alert>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {insights.map((insight) => {
+              const severity = getInsightSeverity(insight.category);
+              return (
+                <Box
+                  key={insight.id}
+                  sx={{
+                    p: 1.5,
+                    backgroundColor: neutral?.[50],
+                    borderRadius: '4px',
+                    borderLeft: `3px solid ${getSeverityColor(severity, theme)}`,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    <Typography
+                      sx={{
+                        fontSize: '14px',
+                        fontWeight: 400,
+                        color: neutral?.[900],
+                        lineHeight: '20px',
+                      }}
+                    >
+                      {insight.title}
+                    </Typography>
+                    <Chip
+                      label={insight.category}
+                      size="small"
+                      sx={{
+                        backgroundColor: getCategoryColor(insight.category, theme),
+                        color: theme.palette.common.white,
+                        fontSize: '10px',
+                        height: 16,
+                        '& .MuiChip-label': { px: 1 },
+                      }}
+                    />
+                  </Box>
+                  <Typography sx={{ fontSize: '13px', color: neutral?.[500], lineHeight: '18px' }}>
+                    {insight.description}
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+    </CardBox>
   );
 }

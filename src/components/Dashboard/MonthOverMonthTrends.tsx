@@ -1,79 +1,149 @@
-import { TrendingUp } from 'lucide-react';
+import { Box, Typography, Divider } from '@mui/material';
+import { useTheme, alpha } from '@mui/material/styles';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import type { Trends } from '../../types';
+import CardBox from './CardBox';
 
 interface MonthOverMonthTrendsProps {
   data: Trends;
 }
 
-function formatChange(value: number): { text: string; color: string } {
-  const prefix = value > 0 ? '+' : '';
-  const color = value > 0 ? 'text-green-600' : value < 0 ? 'text-red-500' : 'text-slate-500';
-  return { text: `${prefix}${value}%`, color };
-}
-
 export default function MonthOverMonthTrends({ data }: MonthOverMonthTrendsProps) {
-  const collectionsChange = formatChange(data.collections);
-  const disbursementsChange = formatChange(data.disbursements);
-  const delinquencyChange = formatChange(data.delinquency);
+  const theme = useTheme();
+  const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
+  const green = (theme.palette as { green?: { dark: string } }).green;
+
+  const formatChange = (value: number, positiveIsGood: boolean) => {
+    const color =
+      value === 0
+        ? neutral?.[500]
+        : value > 0
+          ? positiveIsGood
+            ? green?.dark ?? '#2e7d32'
+            : theme.palette.error.main
+          : positiveIsGood
+            ? theme.palette.error.main
+            : green?.dark ?? '#2e7d32';
+    return (
+      <Typography sx={{ fontSize: '14px', color, lineHeight: '20px', fontWeight: 400 }}>
+        {value > 0 ? '+' : ''}{value.toFixed(1)}%
+      </Typography>
+    );
+  };
+
+  const delinquencyTrend = data.delinquency;
+  const delinquencyDirection = delinquencyTrend <= 0 ? 'improved' : 'increased';
+  const delinquencyMagnitude = Math.abs(delinquencyTrend).toFixed(1);
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 bg-blue-50 rounded flex items-center justify-center">
-          <TrendingUp className="w-4 h-4 text-blue-600" />
-        </div>
-        <h3 className="text-sm font-semibold text-slate-800">Month-over-Month Trends</h3>
-      </div>
+    <CardBox
+      customSx={{
+        padding: 2,
+        borderRadius: 2,
+        backgroundColor: alpha(theme.palette.common.white, 0.82),
+      }}
+    >
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              backgroundColor: neutral?.[50],
+              borderRadius: '8px',
+              padding: '10px',
+            }}
+          >
+            <TimelineIcon sx={{ fontSize: '20px', color: theme.palette.text.primary }} />
+          </Box>
+          <Typography sx={{ color: neutral?.[900], fontWeight: 400, fontSize: '18px', lineHeight: '24px' }}>
+            Month-over-Month Trends
+          </Typography>
+        </Box>
 
-      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-        Percentage Changes
-      </p>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography
+            sx={{
+              color: neutral?.[400],
+              fontSize: '12px',
+              fontWeight: 400,
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+              lineHeight: '16px',
+            }}
+          >
+            Percentage Changes
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 4,
+              paddingY: 1.5,
+              paddingX: 2,
+              borderRadius: 0.5,
+              backgroundColor: neutral?.[50],
+            }}
+          >
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography sx={{ color: neutral?.[400], fontSize: '13px', lineHeight: '18px', fontWeight: 400 }}>
+                Collections
+              </Typography>
+              {formatChange(data.collections, true)}
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography sx={{ color: neutral?.[400], fontSize: '13px', lineHeight: '18px', fontWeight: 400 }}>
+                Disbursements
+              </Typography>
+              {formatChange(data.disbursements, false)}
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography sx={{ color: neutral?.[400], fontSize: '13px', lineHeight: '18px', fontWeight: 400 }}>
+                Delinquency
+              </Typography>
+              {formatChange(data.delinquency, false)}
+            </Box>
+          </Box>
+        </Box>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        {/* Collections */}
-        <div>
-          <p className="text-xs text-slate-500 mb-0.5">Collections</p>
-          <p className={`text-lg font-bold ${collectionsChange.color}`}>
-            {collectionsChange.text}
-          </p>
-        </div>
+        <Divider sx={{ borderColor: neutral?.[200] }} />
 
-        {/* Disbursements */}
-        <div>
-          <p className="text-xs text-slate-500 mb-0.5">Disbursements</p>
-          <p className={`text-lg font-bold ${disbursementsChange.color}`}>
-            {disbursementsChange.text}
-          </p>
-        </div>
+        <Box sx={{ display: 'flex', gap: 6 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography sx={{ color: neutral?.[400], fontSize: '13px', lineHeight: '18px', fontWeight: 400 }}>
+              New Loans:
+            </Typography>
+            <Typography sx={{ color: neutral?.[900], fontWeight: 400, fontSize: '14px', lineHeight: '20px' }}>
+              {data.newLoans}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography sx={{ color: neutral?.[400], fontSize: '13px', lineHeight: '18px', fontWeight: 400 }}>
+              Paid Off:
+            </Typography>
+            <Typography sx={{ color: neutral?.[900], fontWeight: 400, fontSize: '14px', lineHeight: '20px' }}>
+              {data.paidOff}
+            </Typography>
+          </Box>
+        </Box>
 
-        {/* Delinquency */}
-        <div className="text-right">
-          <p className="text-xs text-slate-500 mb-0.5">Delinquency</p>
-          <p className={`text-lg font-bold ${delinquencyChange.color}`}>
-            {delinquencyChange.text}
-          </p>
-        </div>
-      </div>
-
-      {/* Loan Activity */}
-      <div className="flex items-center gap-6 mb-3">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">New Loans:</span>
-          <span className="text-xs font-semibold text-slate-900">{data.newLoans}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">Paid Off:</span>
-          <span className="text-xs font-semibold text-slate-900">{data.paidOff}</span>
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="border-t border-slate-100 pt-3">
-        <p className="text-xs text-green-700 leading-relaxed">
-          Collections are up {data.collections}% compared to last month. Delinquency rate has improved by {Math.abs(data.delinquency)} percentage points, indicating <strong className="font-semibold">effective</strong> collection efforts.
-        </p>
-      </div>
-    </div>
+        <Box sx={{ p: 2, backgroundColor: neutral?.[50], borderRadius: '4px' }}>
+          <Typography
+            sx={{
+              fontSize: '14px',
+              color: neutral?.[700],
+              lineHeight: '20px',
+              fontWeight: 400,
+              fontStyle: 'italic',
+            }}
+          >
+            Collections are up {data.collections.toFixed(1)}% compared to last month. Delinquency rate has {delinquencyDirection} by {delinquencyMagnitude} percentage points.
+          </Typography>
+        </Box>
+      </Box>
+    </CardBox>
   );
 }

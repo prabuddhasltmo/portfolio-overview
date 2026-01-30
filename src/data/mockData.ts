@@ -1,6 +1,5 @@
 import type { PortfolioData, AIInsight, SidebarItem, Sentiment } from '../types';
 
-// Current month data (January 2026)
 export const portfolioData: PortfolioData = {
   month: 'January',
   year: 2026,
@@ -57,9 +56,7 @@ export const portfolioData: PortfolioData = {
   ],
 };
 
-// Historical data (3 months prior)
 export const historicalPortfolioData: PortfolioData[] = [
-  // October 2025
   {
     month: 'October',
     year: 2025,
@@ -93,7 +90,6 @@ export const historicalPortfolioData: PortfolioData[] = [
     },
     actionItems: [],
   },
-  // November 2025
   {
     month: 'November',
     year: 2025,
@@ -127,7 +123,6 @@ export const historicalPortfolioData: PortfolioData[] = [
     },
     actionItems: [],
   },
-  // December 2025
   {
     month: 'December',
     year: 2025,

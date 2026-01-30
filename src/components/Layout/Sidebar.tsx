@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Box, Typography, ButtonBase } from '@mui/material';
+import { useTheme, alpha } from '@mui/material/styles';
 import {
   ChevronDown,
   ChevronRight,
@@ -63,32 +65,93 @@ function SidebarItem({
   level = 0,
   onClick,
 }: SidebarItemProps) {
-  const paddingLeft = level === 0 ? 'pl-3' : level === 1 ? 'pl-6' : 'pl-9';
+  const theme = useTheme();
+  const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
+  const pl = level === 0 ? 2 : level === 1 ? 3.5 : 5;
 
   return (
-    <button
+    <ButtonBase
       onClick={onClick}
-      className={`w-full flex items-center gap-2 py-1.5 ${paddingLeft} pr-3 text-[13px] text-left transition-colors relative ${
-        active
-          ? 'bg-blue-600 text-white'
-          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-      }`}
+      disableRipple={!onClick}
+      sx={{
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        py: 1.25,
+        pl,
+        pr: 1.5,
+        justifyContent: 'flex-start',
+        textAlign: 'left',
+        borderRadius: '8px',
+        mx: 0.75,
+        position: 'relative',
+        ...(active
+          ? {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              color: theme.palette.primary.main,
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 3,
+                borderRadius: '0 2px 2px 0',
+                backgroundColor: theme.palette.primary.main,
+              },
+            }
+          : {
+              color: neutral?.[700],
+              '&:hover': {
+                backgroundColor: neutral?.[100],
+                color: neutral?.[900],
+              },
+            }),
+      }}
     >
-      {active && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-400" />
+      {icon && (
+        <Box
+          component="span"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 20,
+            height: 20,
+            flexShrink: 0,
+            opacity: active ? 1 : 0.85,
+          }}
+        >
+          {icon}
+        </Box>
       )}
-      {icon && <span className="w-4 h-4 flex-shrink-0 opacity-80">{icon}</span>}
-      <span className="flex-1 truncate">{label}</span>
+      <Typography
+        sx={{
+          flex: 1,
+          fontSize: '14px',
+          fontWeight: 400,
+          lineHeight: 1.5,
+          fontFamily: theme.typography.fontFamily,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </Typography>
       {hasChildren && (
-        <span className="w-4 h-4 flex-shrink-0 opacity-60">
-          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        </span>
+        <Box component="span" sx={{ display: 'flex', flexShrink: 0, opacity: 0.7 }}>
+          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        </Box>
       )}
-    </button>
+    </ButtonBase>
   );
 }
 
 export default function Sidebar() {
+  const theme = useTheme();
+  const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['loan-servicing', 'loans'])
   );
@@ -106,64 +169,114 @@ export default function Sidebar() {
   };
 
   const iconMap: Record<string, React.ReactNode> = {
-    'loan-applications': <FileText size={15} />,
-    'loan-origination': <Building2 size={15} />,
-    'loan-servicing': <Briefcase size={15} />,
-    'portfolio-recap': <LayoutDashboard size={15} />,
-    pulse: <Activity size={15} />,
-    'tasks-pending': <ListTodo size={15} />,
-    loans: <FolderOpen size={15} />,
-    'all-loans': <Home size={15} />,
-    conventional: <Building size={15} />,
-    commercial: <Building2 size={15} />,
-    construction: <HardHat size={15} />,
-    'lines-of-credit': <CreditCard size={15} />,
-    other: <MoreHorizontal size={15} />,
-    'loans-smartviews': <Layers size={15} />,
-    properties: <Home size={15} />,
-    templates: <FileStack size={15} />,
-    'all-lenders': <Users size={15} />,
-    'lenders-smartviews': <Layers size={15} />,
-    'all-vendors': <Store size={15} />,
-    'vendors-smartviews': <Layers size={15} />,
-    'tasks-reports': <ClipboardList size={15} />,
-    'conversation-log': <MessageSquare size={15} />,
-    'text-messages': <MessageCircle size={15} />,
-    'e-filing': <FileCheck size={15} />,
-    '1098-mortgage': <Receipt size={15} />,
-    '1099-int': <DollarSign size={15} />,
-    '1099-misc': <FileSpreadsheet size={15} />,
-    '1099-nec': <FileSpreadsheet size={15} />,
-    't5-statements': <FileSpreadsheet size={15} />,
-    'mortgage-pool': <Landmark size={15} />,
-    'ach-express': <Zap size={15} />,
-    marketplace: <ShoppingBag size={15} />,
-    'custom-letters': <Mail size={15} />,
-    'trust-accounts': <Shield size={15} />,
-    'online-portals': <Globe size={15} />,
-    'events-journal': <Calendar size={15} />,
-    'business-contacts': <Contact size={15} />,
-    'financial-calculator': <Calculator size={15} />,
-    'mailing-label': <Tag size={15} />,
-    'window-envelope': <Square size={15} />,
-    reminders: <Bell size={15} />,
-    'user-management': <UserCog size={15} />,
-    'company-properties': <Settings size={15} />,
-    'order-supplies': <Package size={15} />,
-    'feature-request': <Star size={15} />,
+    'loan-applications': <FileText size={18} />,
+    'loan-origination': <Building2 size={18} />,
+    'loan-servicing': <Briefcase size={18} />,
+    'portfolio-recap': <LayoutDashboard size={18} />,
+    pulse: <Activity size={18} />,
+    'tasks-pending': <ListTodo size={18} />,
+    loans: <FolderOpen size={18} />,
+    'all-loans': <Home size={18} />,
+    conventional: <Building size={18} />,
+    commercial: <Building2 size={18} />,
+    construction: <HardHat size={18} />,
+    'lines-of-credit': <CreditCard size={18} />,
+    other: <MoreHorizontal size={18} />,
+    'loans-smartviews': <Layers size={18} />,
+    properties: <Home size={18} />,
+    templates: <FileStack size={18} />,
+    'all-lenders': <Users size={18} />,
+    'lenders-smartviews': <Layers size={18} />,
+    'all-vendors': <Store size={18} />,
+    'vendors-smartviews': <Layers size={18} />,
+    'tasks-reports': <ClipboardList size={18} />,
+    'conversation-log': <MessageSquare size={18} />,
+    'text-messages': <MessageCircle size={18} />,
+    'e-filing': <FileCheck size={18} />,
+    '1098-mortgage': <Receipt size={18} />,
+    '1099-int': <DollarSign size={18} />,
+    '1099-misc': <FileSpreadsheet size={18} />,
+    '1099-nec': <FileSpreadsheet size={18} />,
+    't5-statements': <FileSpreadsheet size={18} />,
+    'mortgage-pool': <Landmark size={18} />,
+    'ach-express': <Zap size={18} />,
+    marketplace: <ShoppingBag size={18} />,
+    'custom-letters': <Mail size={18} />,
+    'trust-accounts': <Shield size={18} />,
+    'online-portals': <Globe size={18} />,
+    'events-journal': <Calendar size={18} />,
+    'business-contacts': <Contact size={18} />,
+    'financial-calculator': <Calculator size={18} />,
+    'mailing-label': <Tag size={18} />,
+    'window-envelope': <Square size={18} />,
+    reminders: <Bell size={18} />,
+    'user-management': <UserCog size={18} />,
+    'company-properties': <Settings size={18} />,
+    'order-supplies': <Package size={18} />,
+    'feature-request': <Star size={18} />,
   };
 
   return (
-    <aside className="w-52 bg-slate-900 flex flex-col h-screen flex-shrink-0">
-      {/* Logo */}
-      <div className="h-11 flex items-center gap-2 px-3 border-b border-slate-700">
-        <Menu size={18} className="text-white" />
-        <span className="text-white font-semibold text-sm tracking-tight">TheMortgageOffice</span>
-      </div>
+    <Box
+      component="aside"
+      sx={{
+        width: 224,
+        flexShrink: 0,
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: theme.palette.common.white,
+        borderRight: `1px solid ${neutral?.[200] ?? '#E1E7EE'}`,
+        fontFamily: theme.typography.fontFamily,
+      }}
+    >
+      <Box
+        sx={{
+          height: 56,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          px: 2,
+          borderBottom: `1px solid ${neutral?.[200] ?? '#E1E7EE'}`,
+          backgroundColor: neutral?.[50],
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            backgroundColor: theme.palette.common.white,
+            border: `1px solid ${neutral?.[200]}`,
+          }}
+        >
+          <Menu size={18} style={{ color: neutral?.[700] }} />
+        </Box>
+        <Typography
+          sx={{
+            fontSize: '15px',
+            fontWeight: 500,
+            color: neutral?.[900],
+            letterSpacing: '-0.01em',
+          }}
+        >
+          TheMortgageOffice
+        </Typography>
+      </Box>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto sidebar-scroll py-1">
-        {/* Loan Applications */}
+      <Box
+        component="nav"
+        className="sidebar-scroll"
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          py: 1,
+        }}
+      >
         <SidebarItem
           label="Loan Applications"
           icon={iconMap['loan-applications']}
@@ -172,7 +285,6 @@ export default function Sidebar() {
           onClick={() => toggleSection('loan-applications')}
         />
 
-        {/* Loan Origination */}
         <SidebarItem
           label="Loan Origination"
           icon={iconMap['loan-origination']}
@@ -181,7 +293,6 @@ export default function Sidebar() {
           onClick={() => toggleSection('loan-origination')}
         />
 
-        {/* Loan Servicing */}
         <SidebarItem
           label="Loan Servicing"
           icon={iconMap['loan-servicing']}
@@ -328,105 +439,95 @@ export default function Sidebar() {
           </>
         )}
 
-        {/* Mortgage Pool Servicing */}
         <SidebarItem
           label="Mortgage Pool Servicing"
           icon={iconMap['mortgage-pool']}
           hasChildren
         />
 
-        {/* ACH Express */}
         <SidebarItem label="ACH Express" icon={iconMap['ach-express']} />
 
-        {/* Marketplace */}
         <SidebarItem
           label="Marketplace"
           icon={iconMap['marketplace']}
           hasChildren
         />
 
-        {/* Custom Letters & Reports */}
         <SidebarItem
           label="Custom Letters & Reports"
           icon={iconMap['custom-letters']}
           hasChildren
         />
 
-        {/* Trust Accounts */}
         <SidebarItem
           label="Trust Accounts"
           icon={iconMap['trust-accounts']}
           hasChildren
         />
 
-        {/* Online Portals */}
         <SidebarItem
           label="Online Portals"
           icon={iconMap['online-portals']}
           hasChildren
         />
 
-        {/* Events Journal */}
         <SidebarItem
           label="Events Journal"
           icon={iconMap['events-journal']}
         />
 
-        {/* Business Contacts */}
         <SidebarItem
           label="Business Contacts"
           icon={iconMap['business-contacts']}
           hasChildren
         />
 
-        {/* Financial Calculator */}
         <SidebarItem
           label="Financial Calculator"
           icon={iconMap['financial-calculator']}
         />
 
-        {/* Mailing Label Maintenance */}
         <SidebarItem
           label="Mailing Label Maintenance"
           icon={iconMap['mailing-label']}
         />
 
-        {/* Window Envelope Alignment */}
         <SidebarItem
           label="Window Envelope Alignment"
           icon={iconMap['window-envelope']}
         />
 
-        {/* Reminders */}
         <SidebarItem label="Reminders" icon={iconMap['reminders']} />
 
-        {/* User Management */}
         <SidebarItem
           label="User Management"
           icon={iconMap['user-management']}
         />
 
-        {/* Company Properties */}
         <SidebarItem
           label="Company Properties"
           icon={iconMap['company-properties']}
           hasChildren
         />
 
-        {/* Order Supplies */}
         <SidebarItem
           label="Order Supplies"
           icon={iconMap['order-supplies']}
         />
 
-        {/* Feature Request */}
-        <div className="border-t border-slate-700 mt-1 pt-1">
+        <Box
+          sx={{
+            borderTop: `1px solid ${neutral?.[200]}`,
+            mt: 1,
+            pt: 1,
+          }}
+        >
           <SidebarItem
             label="Feature Request"
             icon={iconMap['feature-request']}
           />
-        </div>
-      </nav>
-    </aside>
+        </Box>
+      </Box>
+    </Box>
   );
 }

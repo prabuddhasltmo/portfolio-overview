@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
@@ -16,7 +17,6 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// Scenario management
 const DATA_DIR = join(__dirname, 'data');
 let currentScenario = 'trending-up';
 
@@ -40,14 +40,12 @@ const listScenarios = () => {
   });
 };
 
-// OpenAI client
 const getClient = () => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   return new OpenAI({ apiKey });
 };
 
-// Swagger configuration
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -175,7 +173,6 @@ app.post('/api/ai/summary', async (req, res) => {
     return res.status(500).json({ error: 'OpenAI API key not configured' });
   }
 
-  // Format historical data for the prompt
   const historicalSummary = historical?.map(h => `
 ${h.month} ${h.year}:
 - Active Loans: ${h.activeLoans}
@@ -213,7 +210,6 @@ Return ONLY the JSON object, no other text or markdown.`;
     });
 
     let content = response.choices[0]?.message?.content || '';
-    // Strip markdown code blocks if present
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     const parsed = JSON.parse(content);
@@ -287,7 +283,6 @@ Return ONLY the JSON array, no other text.`;
     });
 
     let content = response.choices[0]?.message?.content || '';
-    // Strip markdown code blocks if present
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const insights = JSON.parse(content);
     res.json({ insights });
@@ -360,7 +355,7 @@ app.get('/api/scenarios/current', (_req, res) => {
 app.post('/api/scenarios/:id', (req, res) => {
   const { id } = req.params;
   try {
-    loadScenario(id); // Validate it exists
+    loadScenario(id);
     currentScenario = id;
     res.json({ success: true, scenario: currentScenario });
   } catch {
@@ -393,7 +388,6 @@ app.get('/api/portfolio', (_req, res) => {
   }
 });
 
-// Serve static frontend files
 app.use(express.static(join(__dirname, 'dist')));
 app.use((_req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));

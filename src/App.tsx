@@ -11,10 +11,12 @@ import MonthOverMonthTrends from './components/Dashboard/MonthOverMonthTrends';
 import AIInsights from './components/Dashboard/AIInsights';
 import ActionItems from './components/Dashboard/ActionItems';
 import CardBox from './components/Dashboard/CardBox';
+import NoDataForPeriodCard from './components/Dashboard/NoDataForPeriodCard';
 import { portfolioData as fallbackData, historicalPortfolioData as fallbackHistorical } from './data/mockData';
 import { fetchPortfolioData, fetchScenarios, switchScenario, type Scenario, type PortfolioResponse } from './services/openai';
 import type { PortfolioData } from './types';
 import portfolioRecapTheme from './portfolioRecapTheme';
+import { periodKey, parsePeriodKey } from './constants/periods';
 
 function App() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -22,9 +24,41 @@ function App() {
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [selectedPeriodKey, setSelectedPeriodKey] = useState<string | null>(null);
 
-  const currentData: PortfolioData = portfolio?.current || fallbackData;
-  const historicalData: PortfolioData[] = portfolio?.historical || fallbackHistorical;
+  const rawCurrent: PortfolioData = portfolio?.current || fallbackData;
+  const rawHistorical: PortfolioData[] = portfolio?.historical || fallbackHistorical;
+  const allPeriods: PortfolioData[] = [rawCurrent, ...rawHistorical];
+
+  const effectiveKey =
+    selectedPeriodKey && allPeriods.some((p) => periodKey(p.month, p.year) === selectedPeriodKey)
+      ? selectedPeriodKey
+      : periodKey(rawCurrent.month, rawCurrent.year);
+
+  const currentData: PortfolioData = allPeriods.find((p) => periodKey(p.month, p.year) === effectiveKey) ?? rawCurrent;
+  const historicalData: PortfolioData[] = allPeriods.filter((p) => periodKey(p.month, p.year) !== effectiveKey);
+
+  const displayMonth = (() => {
+    if (!selectedPeriodKey) return rawCurrent.month;
+    const match = allPeriods.find((p) => periodKey(p.month, p.year) === selectedPeriodKey);
+    if (match) return match.month;
+    const parsed = parsePeriodKey(selectedPeriodKey);
+    return parsed?.month ?? rawCurrent.month;
+  })();
+  const displayYear = (() => {
+    if (!selectedPeriodKey) return rawCurrent.year;
+    const match = allPeriods.find((p) => periodKey(p.month, p.year) === selectedPeriodKey);
+    if (match) return match.year;
+    const parsed = parsePeriodKey(selectedPeriodKey);
+    return parsed?.year ?? rawCurrent.year;
+  })();
+
+  const hasDataForSelectedPeriod =
+    !selectedPeriodKey || allPeriods.some((p) => periodKey(p.month, p.year) === selectedPeriodKey);
+
+  const handlePeriodChange = (month: string, year: number) => {
+    setSelectedPeriodKey(periodKey(month, year));
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -34,6 +68,7 @@ function App() {
     ]);
     setScenarios(scenarioList);
     setPortfolio(portfolioResponse);
+    setSelectedPeriodKey(null);
     setLastUpdated(new Date());
     setLoading(false);
   }, []);
@@ -57,15 +92,38 @@ function App() {
   return (
     <ThemeProvider theme={portfolioRecapTheme}>
       <CssBaseline />
-      <div className="flex h-screen bg-[#F8F8FF]">
+      <Box
+        sx={{
+          display: 'flex',
+          height: '100vh',
+          bgcolor: 'background.default',
+        }}
+      >
         <Sidebar />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <main className="flex-1 overflow-y-auto bg-[#F8F8FF] p-4">
-            <div className="space-y-3">
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <Box
+            component="main"
+            sx={{
+              flex: 1,
+              overflowY: 'auto',
+              bgcolor: 'background.default',
+              p: 2,
+            }}
+          >
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <PortfolioRecapHeader
-                month={currentData.month}
-                year={currentData.year}
+                month={displayMonth}
+                year={displayYear}
+                periods={allPeriods.map((p) => ({ month: p.month, year: p.year }))}
+                onPeriodChange={handlePeriodChange}
                 onRefresh={handleRefresh}
                 scenarios={scenarios}
                 onScenarioChange={handleScenarioChange}
@@ -87,36 +145,72 @@ function App() {
                 </CardBox>
               ) : (
                 <>
-                  <AISummary
-                    data={currentData}
-                    historicalData={historicalData}
-                    refreshTrigger={refreshTrigger}
-                  />
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <CashFlow data={currentData.cashFlow} />
-                    <DelinquentLoans
-                      data={currentData.delinquent}
-                      activeLoans={currentData.activeLoans}
+                  {hasDataForSelectedPeriod ? (
+                    <AISummary
+                      data={currentData}
+                      historicalData={historicalData}
+                      refreshTrigger={refreshTrigger}
                     />
-                  </div>
+                  ) : (
+                    <NoDataForPeriodCard />
+                  )}
 
-                  <PortfolioHealth data={currentData} />
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+                      gap: 1.5,
+                    }}
+                  >
+                    {hasDataForSelectedPeriod ? (
+                      <CashFlow data={currentData.cashFlow} />
+                    ) : (
+                      <NoDataForPeriodCard />
+                    )}
+                    {hasDataForSelectedPeriod ? (
+                      <DelinquentLoans
+                        data={currentData.delinquent}
+                        activeLoans={currentData.activeLoans}
+                      />
+                    ) : (
+                      <NoDataForPeriodCard />
+                    )}
+                  </Box>
 
-                  <MonthOverMonthTrends data={currentData.trends} />
+                  {hasDataForSelectedPeriod ? (
+                    <PortfolioHealth data={currentData} />
+                  ) : (
+                    <NoDataForPeriodCard />
+                  )}
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <AIInsights data={currentData} refreshTrigger={refreshTrigger} />
+                  {hasDataForSelectedPeriod ? (
+                    <MonthOverMonthTrends data={currentData.trends} />
+                  ) : (
+                    <NoDataForPeriodCard />
+                  )}
+
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+                      gap: 1.5,
+                    }}
+                  >
+                    {hasDataForSelectedPeriod ? (
+                      <AIInsights data={currentData} refreshTrigger={refreshTrigger} />
+                    ) : (
+                      <NoDataForPeriodCard />
+                    )}
                     <ActionItems items={currentData.actionItems} />
-                  </div>
+                  </Box>
 
                   {lastUpdated && <GeneratedTimestamp timestamp={lastUpdated} />}
                 </>
               )}
-            </div>
-          </main>
-        </div>
-      </div>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
     </ThemeProvider>
   );
 }

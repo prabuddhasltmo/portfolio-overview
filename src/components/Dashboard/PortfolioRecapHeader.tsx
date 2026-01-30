@@ -6,24 +6,43 @@ import ScienceIcon from '@mui/icons-material/Science';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import type { Scenario } from '../../services/openai';
 import CardBox from './CardBox';
+import { MONTHS, getDefaultYears } from '../../constants/periods';
+
+export interface PeriodOption {
+  month: string;
+  year: number;
+}
 
 interface PortfolioRecapHeaderProps {
   month: string;
   year: number;
+  periods?: PeriodOption[];
+  onPeriodChange?: (month: string, year: number) => void;
   onRefresh?: () => void;
   scenarios?: Scenario[];
   onScenarioChange?: (id: string) => void;
   loading?: boolean;
 }
 
+function getAvailableYears(periods: PeriodOption[]): number[] {
+  if (periods.length === 0) return getDefaultYears();
+  const years = [...new Set(periods.map((p) => p.year))].sort((a, b) => a - b);
+  return years;
+}
+
 export default function PortfolioRecapHeader({
   month,
   year,
+  periods = [],
+  onPeriodChange,
   onRefresh,
   scenarios = [],
   onScenarioChange,
   loading = false,
 }: PortfolioRecapHeaderProps) {
+  const availableYears = getAvailableYears(periods);
+  const displayMonth = MONTHS.includes(month as (typeof MONTHS)[number]) ? month : MONTHS[0];
+  const displayYear = availableYears.includes(year) ? year : availableYears[0] ?? year;
   const theme = useTheme();
   const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
   const ui = (theme.palette as { ui?: Record<string, string> }).ui;
@@ -121,37 +140,79 @@ export default function PortfolioRecapHeader({
           </FormControl>
         )}
 
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            px: 1.5,
-            py: 0.75,
-            borderRadius: '6px',
-            border: `1px solid ${ui?.border ?? neutral?.[200]}`,
-            backgroundColor: theme.palette.common.white,
-          }}
-        >
-          <Typography sx={{ fontSize: '14px', color: neutral?.[800] }}>{month}</Typography>
-          <KeyboardArrowDownIcon sx={{ fontSize: 16, color: neutral?.[500] }} />
-        </Box>
-
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            px: 1.5,
-            py: 0.75,
-            borderRadius: '6px',
-            border: `1px solid ${ui?.border ?? neutral?.[200]}`,
-            backgroundColor: theme.palette.common.white,
-          }}
-        >
-          <Typography sx={{ fontSize: '14px', color: neutral?.[800] }}>{year}</Typography>
-          <KeyboardArrowDownIcon sx={{ fontSize: 16, color: neutral?.[500] }} />
-        </Box>
+        {onPeriodChange ? (
+          <>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <Select
+                value={displayMonth}
+                onChange={(e) => onPeriodChange(String(e.target.value), displayYear)}
+                sx={{
+                  ...selectStyles,
+                  borderRadius: '6px',
+                  '& .MuiSelect-select': { py: 0.75, px: 1.5 },
+                }}
+                IconComponent={KeyboardArrowDownIcon}
+              >
+                {MONTHS.map((m) => (
+                  <MenuItem key={m} value={m} sx={{ fontSize: '14px' }}>
+                    {m}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 90 }}>
+              <Select
+                value={displayYear}
+                onChange={(e) => onPeriodChange(displayMonth, Number(e.target.value))}
+                sx={{
+                  ...selectStyles,
+                  borderRadius: '6px',
+                  '& .MuiSelect-select': { py: 0.75, px: 1.5 },
+                }}
+                IconComponent={KeyboardArrowDownIcon}
+              >
+                {availableYears.map((y) => (
+                  <MenuItem key={y} value={y} sx={{ fontSize: '14px' }}>
+                    {y}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        ) : (
+          <>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                px: 1.5,
+                py: 0.75,
+                borderRadius: '6px',
+                border: `1px solid ${ui?.border ?? neutral?.[200]}`,
+                backgroundColor: theme.palette.common.white,
+              }}
+            >
+              <Typography sx={{ fontSize: '14px', color: neutral?.[800] }}>{month}</Typography>
+              <KeyboardArrowDownIcon sx={{ fontSize: 16, color: neutral?.[500] }} />
+            </Box>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                px: 1.5,
+                py: 0.75,
+                borderRadius: '6px',
+                border: `1px solid ${ui?.border ?? neutral?.[200]}`,
+                backgroundColor: theme.palette.common.white,
+              }}
+            >
+              <Typography sx={{ fontSize: '14px', color: neutral?.[800] }}>{year}</Typography>
+              <KeyboardArrowDownIcon sx={{ fontSize: 16, color: neutral?.[500] }} />
+            </Box>
+          </>
+        )}
 
         <Tooltip title="Refresh AI insights">
           <span>

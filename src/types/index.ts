@@ -70,3 +70,42 @@ export interface SidebarItem {
   active?: boolean;
   children?: SidebarItem[];
 }
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+export interface ChatResponse {
+  answer: string;
+  suggestions: string[];
+}
+
+export interface ReportMetric {
+  label: string;
+  value: string;
+  change?: string;
+}
+
+export interface ReportSection {
+  title: string;
+  content: string;
+  metrics?: ReportMetric[];
+}
+
+export interface ReportRecommendation {
+  priority: number;
+  title: string;
+  description: string;
+}
+
+export interface ReportData {
+  title: string;
+  generatedAt: string;
+  executiveSummary: string;
+  sections: ReportSection[];
+  recommendations: ReportRecommendation[];
+}
+
+export type ReportType = 'executive' | 'detailed' | 'recommendations';

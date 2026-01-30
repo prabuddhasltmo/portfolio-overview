@@ -293,6 +293,221 @@ Return ONLY the JSON array, no other text.`;
 
 /**
  * @swagger
+ * /api/ai/chat:
+ *   post:
+ *     summary: Chat with AI about portfolio data
+ *     tags: [AI]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               question:
+ *                 type: string
+ *               portfolioData:
+ *                 $ref: '#/components/schemas/PortfolioData'
+ *               historicalData:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/PortfolioData'
+ *               conversationHistory:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     role:
+ *                       type: string
+ *                     content:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: AI response with suggestions
+ *       500:
+ *         description: Server error
+ */
+app.post('/api/ai/chat', async (req, res) => {
+  const client = getClient();
+  const { question, portfolioData, historicalData, conversationHistory = [] } = req.body;
+
+  if (!client) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+
+  const historicalSummary = historicalData?.map(h => `
+${h.month} ${h.year}:
+- Active Loans: ${h.activeLoans}
+- Principal Balance: $${h.principalBalance?.toLocaleString()}
+- Collections: $${h.cashFlow?.moneyIn?.toLocaleString()} (${h.cashFlow?.moneyInChange > 0 ? '+' : ''}${h.cashFlow?.moneyInChange}%)
+- Delinquency Rate: ${h.delinquent?.percentage}%`).join('\n') || 'No historical data available';
+
+  const systemPrompt = `You are a financial analyst assistant for a mortgage servicing company. You have access to the following portfolio data:
+
+CURRENT PORTFOLIO DATA (${portfolioData.month} ${portfolioData.year}):
+- Total Loans: ${portfolioData.totalLoans}
+- Active Loans: ${portfolioData.activeLoans}
+- Principal Balance: $${portfolioData.principalBalance?.toLocaleString()}
+- Unpaid Interest: $${portfolioData.unpaidInterest?.toLocaleString()}
+- Total Late Charges: $${portfolioData.totalLateCharges?.toLocaleString()}
+- Money In (Collections): $${portfolioData.cashFlow?.moneyIn?.toLocaleString()} (${portfolioData.cashFlow?.moneyInChange > 0 ? '+' : ''}${portfolioData.cashFlow?.moneyInChange}% vs last month)
+- Money Out: $${portfolioData.cashFlow?.moneyOut?.toLocaleString()}
+- Net Cash Flow: $${portfolioData.cashFlow?.netCashFlow?.toLocaleString()}
+- Delinquent Loans: ${portfolioData.delinquent?.total} (${portfolioData.delinquent?.percentage}%)
+- 30 Days Past Due: ${portfolioData.delinquent?.breakdown?.thirtyDays}
+- 60 Days Past Due: ${portfolioData.delinquent?.breakdown?.sixtyDays}
+- 90+ Days Past Due: ${portfolioData.delinquent?.breakdown?.ninetyPlusDays}
+- Collections Trend: ${portfolioData.trends?.collections > 0 ? '+' : ''}${portfolioData.trends?.collections}%
+- Delinquency Trend: ${portfolioData.trends?.delinquency > 0 ? '+' : ''}${portfolioData.trends?.delinquency}%
+- New Loans This Month: ${portfolioData.trends?.newLoans}
+- Loans Paid Off: ${portfolioData.trends?.paidOff}
+
+HISTORICAL DATA (Past 3 Months):
+${historicalSummary}
+
+Answer questions factually and cite specific numbers from the data. Be concise but thorough.`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
+    { role: 'user', content: `${question}
+
+After answering, suggest 2-3 follow-up questions the user might want to ask. Format your response as JSON with these fields:
+- "answer": Your detailed answer to the question
+- "suggestions": An array of 2-3 suggested follow-up questions
+
+Return ONLY the JSON object, no other text or markdown.` }
+  ];
+
+  try {
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 1000,
+      messages,
+    });
+
+    let content = response.choices[0]?.message?.content || '';
+    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const parsed = JSON.parse(content);
+    res.json({
+      answer: parsed.answer || '',
+      suggestions: parsed.suggestions || [],
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/ai/report:
+ *   post:
+ *     summary: Generate a structured AI report
+ *     tags: [AI]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               portfolioData:
+ *                 $ref: '#/components/schemas/PortfolioData'
+ *               historicalData:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/PortfolioData'
+ *               reportType:
+ *                 type: string
+ *                 enum: [executive, detailed, recommendations]
+ *     responses:
+ *       200:
+ *         description: Structured report data
+ *       500:
+ *         description: Server error
+ */
+app.post('/api/ai/report', async (req, res) => {
+  const client = getClient();
+  const { portfolioData, historicalData, reportType = 'executive' } = req.body;
+
+  if (!client) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+
+  const historicalSummary = historicalData?.map(h => `
+${h.month} ${h.year}:
+- Active Loans: ${h.activeLoans}, Principal: $${h.principalBalance?.toLocaleString()}
+- Collections: $${h.cashFlow?.moneyIn?.toLocaleString()} (${h.cashFlow?.moneyInChange > 0 ? '+' : ''}${h.cashFlow?.moneyInChange}%)
+- Delinquency: ${h.delinquent?.percentage}%`).join('\n') || 'No historical data';
+
+  const reportTypeInstructions = {
+    executive: 'Focus on high-level metrics, trends, and key takeaways for executives. Keep sections concise.',
+    detailed: 'Provide comprehensive analysis of all metrics with detailed explanations and comparisons to historical data.',
+    recommendations: 'Focus primarily on actionable recommendations based on the data, with supporting analysis.',
+  };
+
+  const prompt = `Generate a professional portfolio report based on this data:
+
+CURRENT PORTFOLIO (${portfolioData.month} ${portfolioData.year}):
+- Total Loans: ${portfolioData.totalLoans}, Active: ${portfolioData.activeLoans}
+- Principal Balance: $${portfolioData.principalBalance?.toLocaleString()}
+- Unpaid Interest: $${portfolioData.unpaidInterest?.toLocaleString()}
+- Late Charges: $${portfolioData.totalLateCharges?.toLocaleString()}
+- Collections: $${portfolioData.cashFlow?.moneyIn?.toLocaleString()} (${portfolioData.cashFlow?.moneyInChange > 0 ? '+' : ''}${portfolioData.cashFlow?.moneyInChange}%)
+- Disbursements: $${portfolioData.cashFlow?.moneyOut?.toLocaleString()}
+- Net Cash Flow: $${portfolioData.cashFlow?.netCashFlow?.toLocaleString()}
+- Delinquent: ${portfolioData.delinquent?.total} loans (${portfolioData.delinquent?.percentage}%)
+  - 30 days: ${portfolioData.delinquent?.breakdown?.thirtyDays}
+  - 60 days: ${portfolioData.delinquent?.breakdown?.sixtyDays}
+  - 90+ days: ${portfolioData.delinquent?.breakdown?.ninetyPlusDays}
+- Trends: Collections ${portfolioData.trends?.collections > 0 ? '+' : ''}${portfolioData.trends?.collections}%, Delinquency ${portfolioData.trends?.delinquency > 0 ? '+' : ''}${portfolioData.trends?.delinquency}%
+
+HISTORICAL DATA:
+${historicalSummary}
+
+Report Type: ${reportType.toUpperCase()}
+Instructions: ${reportTypeInstructions[reportType]}
+
+Return a JSON object with:
+- "title": Report title (e.g., "Portfolio Performance Report - January 2026")
+- "executiveSummary": 2-3 paragraph summary of portfolio health and key findings
+- "sections": Array of 3-4 sections, each with:
+  - "title": Section title
+  - "content": 1-2 paragraphs of analysis
+  - "metrics": Array of key metrics (optional), each with "label", "value", and optional "change"
+- "recommendations": Array of 3-5 recommendations, each with:
+  - "priority": 1 (high), 2 (medium), or 3 (low)
+  - "title": Short recommendation title
+  - "description": 1-2 sentence explanation
+
+Return ONLY the JSON object.`;
+
+  try {
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    let content = response.choices[0]?.message?.content || '';
+    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const parsed = JSON.parse(content);
+    res.json({
+      title: parsed.title || `Portfolio Report - ${portfolioData.month} ${portfolioData.year}`,
+      generatedAt: new Date().toISOString(),
+      executiveSummary: parsed.executiveSummary || '',
+      sections: parsed.sections || [],
+      recommendations: parsed.recommendations || [],
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
  * /api/health:
  *   get:
  *     summary: Health check

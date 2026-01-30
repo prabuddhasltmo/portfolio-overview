@@ -1,11 +1,15 @@
-import { Box, Typography, FormControl, Select, MenuItem, IconButton, Tooltip } from '@mui/material';
+import { useState } from 'react';
+import { Box, Typography, FormControl, Select, MenuItem, IconButton, Tooltip, Button } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import InsightsIcon from '@mui/icons-material/Insights';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ScienceIcon from '@mui/icons-material/Science';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { FileText } from 'lucide-react';
 import type { Scenario } from '../../services/openai';
+import type { PortfolioData } from '../../types';
 import CardBox from './CardBox';
+import ReportViewerModal from './ReportViewerModal';
 import { MONTHS, getDefaultYears } from '../../constants/periods';
 
 export interface PeriodOption {
@@ -22,6 +26,8 @@ interface PortfolioRecapHeaderProps {
   scenarios?: Scenario[];
   onScenarioChange?: (id: string) => void;
   loading?: boolean;
+  portfolioData?: PortfolioData;
+  historicalData?: PortfolioData[];
 }
 
 function getAvailableYears(periods: PeriodOption[]): number[] {
@@ -39,7 +45,10 @@ export default function PortfolioRecapHeader({
   scenarios = [],
   onScenarioChange,
   loading = false,
+  portfolioData,
+  historicalData = [],
 }: PortfolioRecapHeaderProps) {
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const availableYears = getAvailableYears(periods);
   const displayMonth = MONTHS.includes(month as (typeof MONTHS)[number]) ? month : MONTHS[0];
   const displayYear = availableYears.includes(year) ? year : availableYears[0] ?? year;
@@ -229,7 +238,40 @@ export default function PortfolioRecapHeader({
             </IconButton>
           </span>
         </Tooltip>
+
+        {portfolioData && (
+          <Button
+            variant="outlined"
+            startIcon={<FileText size={16} />}
+            onClick={() => setReportModalOpen(true)}
+            disabled={loading}
+            sx={{
+              borderColor: theme.palette.primary.main,
+              color: theme.palette.primary.main,
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: '13px',
+              px: 2,
+              py: 0.75,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                borderColor: theme.palette.primary.main,
+              },
+            }}
+          >
+            View Report
+          </Button>
+        )}
       </Box>
+
+      {portfolioData && (
+        <ReportViewerModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          portfolioData={portfolioData}
+          historicalData={historicalData}
+        />
+      )}
     </CardBox>
   );
 }

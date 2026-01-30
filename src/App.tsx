@@ -9,6 +9,7 @@ import DelinquentLoans from './components/Dashboard/DelinquentLoans';
 import PortfolioHealth from './components/Dashboard/PortfolioHealth';
 import MonthOverMonthTrends from './components/Dashboard/MonthOverMonthTrends';
 import AIInsights from './components/Dashboard/AIInsights';
+import AskAIChat from './components/Dashboard/AskAIChat';
 import ActionItems from './components/Dashboard/ActionItems';
 import CardBox from './components/Dashboard/CardBox';
 import NoDataForPeriodCard from './components/Dashboard/NoDataForPeriodCard';
@@ -128,6 +129,8 @@ function App() {
                 scenarios={scenarios}
                 onScenarioChange={handleScenarioChange}
                 loading={loading}
+                portfolioData={currentData}
+                historicalData={historicalData}
               />
 
               {loading ? (
@@ -203,6 +206,11 @@ function App() {
                     )}
                     <ActionItems items={currentData.actionItems} />
                   </Box>
+
+                  <AskAIChat
+                    portfolioData={currentData}
+                    historicalData={historicalData}
+                  />
 
                   {lastUpdated && <GeneratedTimestamp timestamp={lastUpdated} />}
                 </>

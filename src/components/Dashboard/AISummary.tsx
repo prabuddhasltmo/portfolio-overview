@@ -72,6 +72,8 @@ export default function AISummary({ data, historicalData, refreshTrigger }: AISu
         padding: 2,
         borderRadius: 2,
         backgroundColor: alpha(theme.palette.common.white, 0.82),
+        border: `1px solid ${alpha(blueColor, 0.2)}`,
+        boxShadow: `0 2px 8px ${alpha(blueColor, 0.08)}`,
         flexDirection: 'column',
       }}
     >

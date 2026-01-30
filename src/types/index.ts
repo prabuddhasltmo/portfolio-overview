@@ -55,6 +55,14 @@ export interface AIInsight {
   category: 'Performance' | 'Delinquency' | 'Risk' | 'Opportunity';
 }
 
+export type Sentiment = 'good' | 'neutral' | 'bad';
+
+export interface AISummaryResponse {
+  summary: string;
+  sentiment: Sentiment;
+  keyTakeaway: string;
+}
+
 export interface SidebarItem {
   id: string;
   label: string;

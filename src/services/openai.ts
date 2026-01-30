@@ -1,119 +1,100 @@
-import OpenAI from 'openai';
-import type { PortfolioData, AIInsight } from '../types';
-import { mockAISummary, mockAIInsights } from '../data/mockData';
+import type { PortfolioData, AIInsight, AISummaryResponse } from '../types';
+import { mockAISummary, mockAIInsights, mockSentiment, mockKeyTakeaway } from '../data/mockData';
 
-const getClient = () => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  if (!apiKey || apiKey === 'your-api-key-here') {
+const API_BASE = '/api';
+
+export interface Scenario {
+  id: string;
+  name: string;
+  description: string;
+  active: boolean;
+}
+
+export interface PortfolioResponse {
+  scenario: string;
+  name: string;
+  current: PortfolioData;
+  historical: PortfolioData[];
+}
+
+export async function fetchScenarios(): Promise<Scenario[]> {
+  try {
+    const response = await fetch(`${API_BASE}/scenarios`);
+    if (!response.ok) throw new Error('Failed to fetch scenarios');
+    const result = await response.json();
+    return result.scenarios;
+  } catch (error) {
+    console.error('Error fetching scenarios:', error);
+    return [];
+  }
+}
+
+export async function switchScenario(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE}/scenarios/${id}`, { method: 'POST' });
+    return response.ok;
+  } catch (error) {
+    console.error('Error switching scenario:', error);
+    return false;
+  }
+}
+
+export async function fetchPortfolioData(): Promise<PortfolioResponse | null> {
+  try {
+    const response = await fetch(`${API_BASE}/portfolio`);
+    if (!response.ok) throw new Error('Failed to fetch portfolio');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching portfolio:', error);
     return null;
   }
-  return new OpenAI({
-    apiKey,
-    dangerouslyAllowBrowser: true,
-  });
-};
+}
 
-export async function generateAISummary(data: PortfolioData): Promise<string> {
-  const client = getClient();
-
-  if (!client) {
-    // Return mock data if no API key
-    return mockAISummary;
-  }
-
-  const prompt = `You are a financial analyst assistant for a mortgage servicing company. Based on the following portfolio data, generate a concise 2-3 sentence summary highlighting key statistics and performance indicators.
-
-Portfolio Data for ${data.month} ${data.year}:
-- Total Loans: ${data.totalLoans}
-- Active Loans: ${data.activeLoans}
-- Principal Balance: $${data.principalBalance.toLocaleString()}
-- Money In (Collections): $${data.cashFlow.moneyIn.toLocaleString()} (${data.cashFlow.moneyInChange > 0 ? '+' : ''}${data.cashFlow.moneyInChange}% vs last month)
-- Delinquent Loans: ${data.delinquent.total} (${data.delinquent.percentage}%)
-- 30 Days Past Due: ${data.delinquent.breakdown.thirtyDays}
-- 60 Days Past Due: ${data.delinquent.breakdown.sixtyDays}
-- 90+ Days Past Due: ${data.delinquent.breakdown.ninetyPlusDays}
-
-Generate a professional summary that mentions the collection amount, number of payments (assume ~342 payments), active loans, principal balance, delinquency status, and collection performance trend. Keep it factual and data-driven.`;
-
+export async function generateAISummary(
+  data: PortfolioData,
+  historicalData: PortfolioData[]
+): Promise<AISummaryResponse> {
   try {
-    const response = await client.chat.completions.create({
-      model: 'gpt-4o',
-      max_tokens: 300,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
+    const response = await fetch(`${API_BASE}/ai/summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current: data, historical: historicalData }),
     });
 
-    return response.choices[0]?.message?.content || mockAISummary;
+    if (!response.ok) {
+      throw new Error('API request failed');
+    }
+
+    const result = await response.json();
+    return {
+      summary: result.summary || mockAISummary,
+      sentiment: result.sentiment || mockSentiment,
+      keyTakeaway: result.keyTakeaway || mockKeyTakeaway,
+    };
   } catch (error) {
     console.error('Error generating AI summary:', error);
-    return mockAISummary;
+    return {
+      summary: mockAISummary,
+      sentiment: mockSentiment,
+      keyTakeaway: mockKeyTakeaway,
+    };
   }
 }
 
 export async function generateAIInsights(data: PortfolioData): Promise<AIInsight[]> {
-  const client = getClient();
-
-  if (!client) {
-    // Return mock data if no API key
-    return mockAIInsights;
-  }
-
-  const prompt = `You are a financial analyst assistant for a mortgage servicing company. Based on the following portfolio data, generate exactly 4 actionable insights.
-
-Portfolio Data for ${data.month} ${data.year}:
-- Total Loans: ${data.totalLoans}
-- Active Loans: ${data.activeLoans}
-- Principal Balance: $${data.principalBalance.toLocaleString()}
-- Unpaid Interest: $${data.unpaidInterest.toLocaleString()}
-- Total Late Charges: $${data.totalLateCharges.toLocaleString()}
-- Money In (Collections): $${data.cashFlow.moneyIn.toLocaleString()} (${data.cashFlow.moneyInChange > 0 ? '+' : ''}${data.cashFlow.moneyInChange}% vs last month)
-- Money Out (Disbursements): $${data.cashFlow.moneyOut.toLocaleString()} (${data.cashFlow.moneyOutChange}% vs last month)
-- Net Cash Flow: $${data.cashFlow.netCashFlow.toLocaleString()}
-- Delinquent Loans: ${data.delinquent.total} of ${data.activeLoans} (${data.delinquent.percentage}%)
-- 30 Days Past Due: ${data.delinquent.breakdown.thirtyDays}
-- 60 Days Past Due: ${data.delinquent.breakdown.sixtyDays}
-- 90+ Days Past Due: ${data.delinquent.breakdown.ninetyPlusDays}
-- New Loans This Month: ${data.trends.newLoans}
-- Paid Off This Month: ${data.trends.paidOff}
-- Delinquency Trend: ${data.trends.delinquency}% change
-
-Return a JSON array with exactly 4 insights. Each insight must have:
-- id: a unique string (1, 2, 3, 4)
-- title: a short title (5-7 words)
-- description: a 1-2 sentence explanation with specific data points
-- category: one of "Performance", "Delinquency", "Risk", or "Opportunity"
-
-Include one insight for each category. Focus on actionable observations.
-
-Return ONLY the JSON array, no other text.`;
-
   try {
-    const response = await client.chat.completions.create({
-      model: 'gpt-4o',
-      max_tokens: 800,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
+    const response = await fetch(`${API_BASE}/ai/insights`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (content) {
-      try {
-        const insights = JSON.parse(content) as AIInsight[];
-        return insights;
-      } catch {
-        console.error('Error parsing AI insights JSON');
-        return mockAIInsights;
-      }
+    if (!response.ok) {
+      throw new Error('API request failed');
     }
-    return mockAIInsights;
+
+    const result = await response.json();
+    return result.insights || mockAIInsights;
   } catch (error) {
     console.error('Error generating AI insights:', error);
     return mockAIInsights;

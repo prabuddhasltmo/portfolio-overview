@@ -40,6 +40,20 @@ make run
 
 Open http://localhost:3000 (Swagger at http://localhost:3000/api-docs)
 
+## Swagger API Docs
+
+When the Express server is running, Swagger UI is available at:
+- http://localhost:3000/api-docs
+
+## Sample Data
+
+This app ships with sample portfolio data in `data/*.json`. The Express server loads these files and exposes them via:
+- `GET /api/scenarios` (list available scenarios)
+- `POST /api/scenarios/:id` (switch the active scenario)
+- `GET /api/portfolio` (current + historical data for the active scenario)
+
+On the frontend, `usePortfolioRecap` fetches `/api/portfolio` and merges it with `mockPortfolioRecapData` from `src/data/mockPortfolioRecapData.ts` to fill in missing fields. If the API is unavailable, it falls back entirely to `mockPortfolioRecapData`.
+
 ## Make Commands
 
 | Command | Description |

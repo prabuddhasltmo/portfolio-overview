@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import AISummary from './components/Dashboard/AISummary';
@@ -21,11 +21,7 @@ function App() {
   const currentData: PortfolioData = portfolio?.current || fallbackData;
   const historicalData: PortfolioData[] = portfolio?.historical || fallbackHistorical;
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     const [scenarioList, portfolioResponse] = await Promise.all([
       fetchScenarios(),
@@ -34,7 +30,11 @@ function App() {
     setScenarios(scenarioList);
     setPortfolio(portfolioResponse);
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   const handleScenarioChange = async (scenarioId: string) => {
     const success = await switchScenario(scenarioId);

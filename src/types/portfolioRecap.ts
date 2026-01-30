@@ -1,3 +1,12 @@
+export type Sentiment = 'good' | 'neutral' | 'bad';
+
+export interface Scenario {
+  id: string;
+  name: string;
+  description: string;
+  active: boolean;
+}
+
 export interface PortfolioInsight {
   title: string;
   description: string;
@@ -28,6 +37,7 @@ export interface PortfolioRecapModel {
   headline: string | null;
   summary: string;
   keyTakeaway: string | null;
+  sentiment: Sentiment;
   moneyIn: number;
   moneyOut: number;
   totalLoans: number;

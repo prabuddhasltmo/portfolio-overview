@@ -1,0 +1,161 @@
+{
+  "name": "Trending Neutral",
+  "description": "Portfolio showing stable performance with minimal change",
+  "sentiment": "neutral",
+  "current": {
+    "month": "January",
+    "year": 2026,
+    "totalLoans": 1250,
+    "activeLoans": 1210,
+    "principalBalance": 178000000,
+    "unpaidInterest": 1320000,
+    "totalLateCharges": 52000,
+    "cashFlow": {
+      "moneyIn": 2200000,
+      "moneyInChange": 0.5,
+      "moneyOut": 135000,
+      "moneyOutChange": 0.3,
+      "netCashFlow": 2065000
+    },
+    "delinquent": {
+      "total": 95,
+      "percentage": 7.9,
+      "breakdown": {
+        "thirtyDays": 48,
+        "sixtyDays": 31,
+        "ninetyPlusDays": 16
+      }
+    },
+    "trends": {
+      "collections": 0.5,
+      "disbursements": 0.3,
+      "delinquency": 0.1,
+      "newLoans": 12,
+      "paidOff": 11
+    },
+    "actionItems": [
+      {
+        "id": "LN-2024-042",
+        "borrower": "Anderson, Robert",
+        "priority": "High",
+        "amount": 110000,
+        "daysPastDue": 91
+      },
+      {
+        "id": "LN-2024-055",
+        "borrower": "Martinez, Elena",
+        "priority": "Medium",
+        "amount": 78000,
+        "daysPastDue": 65
+      },
+      {
+        "id": "LN-2024-067",
+        "borrower": "Thompson, David",
+        "priority": "Medium",
+        "amount": 92000,
+        "daysPastDue": 58
+      }
+    ]
+  },
+  "historical": [
+    {
+      "month": "October",
+      "year": 2025,
+      "totalLoans": 1240,
+      "activeLoans": 1200,
+      "principalBalance": 176000000,
+      "unpaidInterest": 1350000,
+      "totalLateCharges": 54000,
+      "cashFlow": {
+        "moneyIn": 2180000,
+        "moneyInChange": -0.2,
+        "moneyOut": 132000,
+        "moneyOutChange": 0.5,
+        "netCashFlow": 2048000
+      },
+      "delinquent": {
+        "total": 96,
+        "percentage": 8.0,
+        "breakdown": {
+          "thirtyDays": 49,
+          "sixtyDays": 31,
+          "ninetyPlusDays": 16
+        }
+      },
+      "trends": {
+        "collections": -0.2,
+        "disbursements": 0.5,
+        "delinquency": 0.2,
+        "newLoans": 11,
+        "paidOff": 10
+      },
+      "actionItems": []
+    },
+    {
+      "month": "November",
+      "year": 2025,
+      "totalLoans": 1245,
+      "activeLoans": 1205,
+      "principalBalance": 177000000,
+      "unpaidInterest": 1340000,
+      "totalLateCharges": 53000,
+      "cashFlow": {
+        "moneyIn": 2190000,
+        "moneyInChange": 0.5,
+        "moneyOut": 134000,
+        "moneyOutChange": 1.5,
+        "netCashFlow": 2056000
+      },
+      "delinquent": {
+        "total": 95,
+        "percentage": 7.9,
+        "breakdown": {
+          "thirtyDays": 48,
+          "sixtyDays": 31,
+          "ninetyPlusDays": 16
+        }
+      },
+      "trends": {
+        "collections": 0.5,
+        "disbursements": 1.5,
+        "delinquency": -0.1,
+        "newLoans": 12,
+        "paidOff": 11
+      },
+      "actionItems": []
+    },
+    {
+      "month": "December",
+      "year": 2025,
+      "totalLoans": 1248,
+      "activeLoans": 1208,
+      "principalBalance": 177500000,
+      "unpaidInterest": 1330000,
+      "totalLateCharges": 52500,
+      "cashFlow": {
+        "moneyIn": 2195000,
+        "moneyInChange": 0.2,
+        "moneyOut": 134500,
+        "moneyOutChange": 0.4,
+        "netCashFlow": 2060500
+      },
+      "delinquent": {
+        "total": 95,
+        "percentage": 7.9,
+        "breakdown": {
+          "thirtyDays": 48,
+          "sixtyDays": 31,
+          "ninetyPlusDays": 16
+        }
+      },
+      "trends": {
+        "collections": 0.2,
+        "disbursements": 0.4,
+        "delinquency": 0.0,
+        "newLoans": 12,
+        "paidOff": 11
+      },
+      "actionItems": []
+    }
+  ]
+}

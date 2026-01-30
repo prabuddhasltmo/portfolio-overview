@@ -1,18 +1,45 @@
 import { Box, Typography } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import CardBox from './CardBox';
+import type { Sentiment } from '../../types/portfolioRecap';
 
 type ExecutiveSummaryProps = {
   headline: string | null;
   summary: string;
   keyTakeaway: string | null;
+  sentiment?: Sentiment;
 };
 
-const ExecutiveSummary = ({ headline, summary, keyTakeaway }: ExecutiveSummaryProps) => {
+const sentimentConfig = {
+  good: {
+    bgColor: '#f0fdf4',
+    borderColor: '#86efac',
+    textColor: '#166534',
+    icon: TrendingUpIcon,
+  },
+  neutral: {
+    bgColor: '#fefce8',
+    borderColor: '#fde047',
+    textColor: '#854d0e',
+    icon: TrendingFlatIcon,
+  },
+  bad: {
+    bgColor: '#fef2f2',
+    borderColor: '#fca5a5',
+    textColor: '#991b1b',
+    icon: TrendingDownIcon,
+  },
+};
+
+const ExecutiveSummary = ({ headline, summary, keyTakeaway, sentiment = 'neutral' }: ExecutiveSummaryProps) => {
   const theme = useTheme();
   const blueColor = (theme.palette as { ui?: { iconBlue?: string }; blue?: string }).ui?.iconBlue ?? (theme.palette as { blue?: string }).blue ?? theme.palette.primary.main;
+  const config = sentimentConfig[sentiment];
+  const SentimentIcon = config.icon;
 
   return (
     <CardBox
@@ -99,15 +126,15 @@ const ExecutiveSummary = ({ headline, summary, keyTakeaway }: ExecutiveSummaryPr
               gap: 1.5,
               py: 1.25,
               px: 1.5,
-              backgroundColor: (theme.palette as { neutral?: Record<string, string> }).neutral?.[50],
+              backgroundColor: config.bgColor,
               borderRadius: '6px',
-              border: `1px solid ${(theme.palette as { neutral?: Record<string, string> }).neutral?.[200]}`,
+              border: `1px solid ${config.borderColor}`,
             }}
           >
-            <LightbulbOutlinedIcon
+            <SentimentIcon
               sx={{
                 fontSize: '1.125rem',
-                color: theme.palette.warning?.main ?? '#f59e0b',
+                color: config.textColor,
                 mt: '1px',
               }}
             />
@@ -116,7 +143,7 @@ const ExecutiveSummary = ({ headline, summary, keyTakeaway }: ExecutiveSummaryPr
                 sx={{
                   fontSize: '0.6875rem',
                   lineHeight: '14px',
-                  color: (theme.palette as { neutral?: Record<string, string> }).neutral?.[500],
+                  color: config.textColor,
                   fontWeight: 500,
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
@@ -129,7 +156,7 @@ const ExecutiveSummary = ({ headline, summary, keyTakeaway }: ExecutiveSummaryPr
                 sx={{
                   fontSize: '0.875rem',
                   lineHeight: 1.5,
-                  color: (theme.palette as { neutral?: Record<string, string> }).neutral?.[800],
+                  color: config.textColor,
                   fontWeight: 400,
                 }}
               >

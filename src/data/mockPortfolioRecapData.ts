@@ -5,6 +5,7 @@ export const mockPortfolioRecapData: PortfolioRecapModel = {
   summary:
     'In January 2025, your portfolio received $2,450,000.00 across 342 payments. You have 1,245 active loans with a total principal balance of $185,500,000.00. 87 loans (7.0%) are currently past due. Collections are up 12.5% compared to last month, indicating strong payment performance.',
   keyTakeaway: 'Focus on the 14 loans at 90+ days past due to prevent further escalation.',
+  sentiment: 'good',
   moneyIn: 2450000.0,
   moneyOut: 125000.0,
   totalLoans: 1280,

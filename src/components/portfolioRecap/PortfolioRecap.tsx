@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Box, Typography, CircularProgress, Alert, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, CircularProgress, Alert, IconButton, Tooltip, Select, MenuItem } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import InsightsIcon from '@mui/icons-material/Insights';
+import ScienceIcon from '@mui/icons-material/Science';
 import CardBox from './CardBox';
-import { useGetPortfolioRecap, useRefreshPortfolioRecap } from '../../hooks/usePortfolioRecap';
+import { useGetPortfolioRecap, useRefreshPortfolioRecap, useGetScenarios, useSwitchScenario } from '../../hooks/usePortfolioRecap';
 import MonthSelector from './MonthSelector';
 import ExecutiveSummary from './ExecutiveSummary';
 import MoneyFlowCard from './MoneyFlowCard';
@@ -22,7 +23,14 @@ const PortfolioRecap = () => {
 
   const { data, isLoading, isError, error } = useGetPortfolioRecap({ month, year });
   const refreshMutation = useRefreshPortfolioRecap();
+  const { data: scenarios = [] } = useGetScenarios();
+  const switchScenarioMutation = useSwitchScenario();
   const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
+  const activeScenario = scenarios.find(s => s.active);
+
+  const handleScenarioChange = (scenarioId: string) => {
+    switchScenarioMutation.mutate(scenarioId);
+  };
 
   const handleMonthChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
@@ -93,6 +101,7 @@ const PortfolioRecap = () => {
           headline={data.headline}
           summary={data.summary}
           keyTakeaway={data.keyTakeaway}
+          sentiment={data.sentiment}
         />
 
         <Box sx={{ display: 'flex', gap: 1.5, width: '100%' }}>
@@ -200,6 +209,40 @@ const PortfolioRecap = () => {
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {scenarios.length > 0 && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 1.5,
+                py: 0.75,
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '6px',
+              }}
+            >
+              <ScienceIcon sx={{ fontSize: '16px', color: '#d97706' }} />
+              <Select
+                value={activeScenario?.id || ''}
+                onChange={(e) => handleScenarioChange(e.target.value)}
+                variant="standard"
+                disableUnderline
+                sx={{
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#b45309',
+                  '& .MuiSelect-select': { py: 0, pr: 2 },
+                }}
+              >
+                {scenarios.map((s) => (
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+          )}
           <MonthSelector month={month} year={year} onChange={handleMonthChange} />
           <Tooltip title="Regenerate recap">
             <IconButton

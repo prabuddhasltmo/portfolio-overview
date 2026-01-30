@@ -1,0 +1,175 @@
+{
+  "name": "Trending Down",
+  "description": "Portfolio showing declining performance over 3 months",
+  "sentiment": "bad",
+  "current": {
+    "month": "January",
+    "year": 2026,
+    "totalLoans": 1180,
+    "activeLoans": 1120,
+    "principalBalance": 165000000,
+    "unpaidInterest": 1850000,
+    "totalLateCharges": 89000,
+    "cashFlow": {
+      "moneyIn": 1850000,
+      "moneyInChange": -8.5,
+      "moneyOut": 165000,
+      "moneyOutChange": 12.3,
+      "netCashFlow": 1685000
+    },
+    "delinquent": {
+      "total": 142,
+      "percentage": 12.7,
+      "breakdown": {
+        "thirtyDays": 58,
+        "sixtyDays": 48,
+        "ninetyPlusDays": 36
+      }
+    },
+    "trends": {
+      "collections": -8.5,
+      "disbursements": 12.3,
+      "delinquency": 2.1,
+      "newLoans": 5,
+      "paidOff": 18
+    },
+    "actionItems": [
+      {
+        "id": "LN-2024-089",
+        "borrower": "Garcia, Maria & Jose",
+        "priority": "High",
+        "amount": 185000,
+        "daysPastDue": 125
+      },
+      {
+        "id": "LN-2024-091",
+        "borrower": "Wilson, Thomas",
+        "priority": "High",
+        "amount": 142000,
+        "daysPastDue": 118
+      },
+      {
+        "id": "LN-2024-094",
+        "borrower": "Brown, Jennifer",
+        "priority": "High",
+        "amount": 98000,
+        "daysPastDue": 105
+      },
+      {
+        "id": "LN-2024-098",
+        "borrower": "Davis, Christopher",
+        "priority": "High",
+        "amount": 156000,
+        "daysPastDue": 97
+      },
+      {
+        "id": "LN-2024-102",
+        "borrower": "Miller, Patricia",
+        "priority": "Medium",
+        "amount": 88000,
+        "daysPastDue": 72
+      }
+    ]
+  },
+  "historical": [
+    {
+      "month": "October",
+      "year": 2025,
+      "totalLoans": 1250,
+      "activeLoans": 1200,
+      "principalBalance": 178000000,
+      "unpaidInterest": 1380000,
+      "totalLateCharges": 55000,
+      "cashFlow": {
+        "moneyIn": 2280000,
+        "moneyInChange": 2.1,
+        "moneyOut": 138000,
+        "moneyOutChange": -1.2,
+        "netCashFlow": 2142000
+      },
+      "delinquent": {
+        "total": 96,
+        "percentage": 8.0,
+        "breakdown": {
+          "thirtyDays": 50,
+          "sixtyDays": 30,
+          "ninetyPlusDays": 16
+        }
+      },
+      "trends": {
+        "collections": 2.1,
+        "disbursements": -1.2,
+        "delinquency": -0.3,
+        "newLoans": 14,
+        "paidOff": 10
+      },
+      "actionItems": []
+    },
+    {
+      "month": "November",
+      "year": 2025,
+      "totalLoans": 1225,
+      "activeLoans": 1170,
+      "principalBalance": 173000000,
+      "unpaidInterest": 1550000,
+      "totalLateCharges": 68000,
+      "cashFlow": {
+        "moneyIn": 2100000,
+        "moneyInChange": -7.9,
+        "moneyOut": 148000,
+        "moneyOutChange": 7.2,
+        "netCashFlow": 1952000
+      },
+      "delinquent": {
+        "total": 115,
+        "percentage": 9.8,
+        "breakdown": {
+          "thirtyDays": 52,
+          "sixtyDays": 38,
+          "ninetyPlusDays": 25
+        }
+      },
+      "trends": {
+        "collections": -7.9,
+        "disbursements": 7.2,
+        "delinquency": 1.8,
+        "newLoans": 8,
+        "paidOff": 15
+      },
+      "actionItems": []
+    },
+    {
+      "month": "December",
+      "year": 2025,
+      "totalLoans": 1200,
+      "activeLoans": 1140,
+      "principalBalance": 168000000,
+      "unpaidInterest": 1720000,
+      "totalLateCharges": 78000,
+      "cashFlow": {
+        "moneyIn": 2020000,
+        "moneyInChange": -3.8,
+        "moneyOut": 155000,
+        "moneyOutChange": 4.7,
+        "netCashFlow": 1865000
+      },
+      "delinquent": {
+        "total": 128,
+        "percentage": 11.2,
+        "breakdown": {
+          "thirtyDays": 55,
+          "sixtyDays": 43,
+          "ninetyPlusDays": 30
+        }
+      },
+      "trends": {
+        "collections": -3.8,
+        "disbursements": 4.7,
+        "delinquency": 1.4,
+        "newLoans": 6,
+        "paidOff": 16
+      },
+      "actionItems": []
+    }
+  ]
+}

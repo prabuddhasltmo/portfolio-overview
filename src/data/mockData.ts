@@ -1,5 +1,6 @@
-import type { PortfolioData, AIInsight, SidebarItem } from '../types';
+import type { PortfolioData, AIInsight, SidebarItem, Sentiment } from '../types';
 
+// Current month data (January 2026)
 export const portfolioData: PortfolioData = {
   month: 'January',
   year: 2026,
@@ -56,7 +57,117 @@ export const portfolioData: PortfolioData = {
   ],
 };
 
+// Historical data (3 months prior)
+export const historicalPortfolioData: PortfolioData[] = [
+  // October 2025
+  {
+    month: 'October',
+    year: 2025,
+    totalLoans: 1210,
+    activeLoans: 1175,
+    principalBalance: 172000000,
+    unpaidInterest: 1450000,
+    totalLateCharges: 62000,
+    cashFlow: {
+      moneyIn: 2050000,
+      moneyInChange: -2.1,
+      moneyOut: 145000,
+      moneyOutChange: 3.5,
+      netCashFlow: 1905000,
+    },
+    delinquent: {
+      total: 105,
+      percentage: 8.9,
+      breakdown: {
+        thirtyDays: 52,
+        sixtyDays: 35,
+        ninetyPlusDays: 18,
+      },
+    },
+    trends: {
+      collections: -2.1,
+      disbursements: 3.5,
+      delinquency: 1.2,
+      newLoans: 10,
+      paidOff: 12,
+    },
+    actionItems: [],
+  },
+  // November 2025
+  {
+    month: 'November',
+    year: 2025,
+    totalLoans: 1235,
+    activeLoans: 1200,
+    principalBalance: 178000000,
+    unpaidInterest: 1380000,
+    totalLateCharges: 55000,
+    cashFlow: {
+      moneyIn: 2180000,
+      moneyInChange: 6.3,
+      moneyOut: 138000,
+      moneyOutChange: -4.8,
+      netCashFlow: 2042000,
+    },
+    delinquent: {
+      total: 96,
+      percentage: 8.0,
+      breakdown: {
+        thirtyDays: 50,
+        sixtyDays: 30,
+        ninetyPlusDays: 16,
+      },
+    },
+    trends: {
+      collections: 6.3,
+      disbursements: -4.8,
+      delinquency: -0.9,
+      newLoans: 12,
+      paidOff: 10,
+    },
+    actionItems: [],
+  },
+  // December 2025
+  {
+    month: 'December',
+    year: 2025,
+    totalLoans: 1260,
+    activeLoans: 1225,
+    principalBalance: 182000000,
+    unpaidInterest: 1300000,
+    totalLateCharges: 48000,
+    cashFlow: {
+      moneyIn: 2320000,
+      moneyInChange: 6.4,
+      moneyOut: 130000,
+      moneyOutChange: -5.8,
+      netCashFlow: 2190000,
+    },
+    delinquent: {
+      total: 92,
+      percentage: 7.5,
+      breakdown: {
+        thirtyDays: 48,
+        sixtyDays: 29,
+        ninetyPlusDays: 15,
+      },
+    },
+    trends: {
+      collections: 6.4,
+      disbursements: -5.8,
+      delinquency: -0.5,
+      newLoans: 14,
+      paidOff: 9,
+    },
+    actionItems: [],
+  },
+];
+
 export const mockAISummary = `In January 2026, your portfolio received $2,450,000.00 across 342 payments. You have 1,245 active loans with a total principal balance of $185,500,000.00. 87 loans (7.0%) are currently past due. Collections are up 12.5% compared to last month, indicating strong payment performance.`;
+
+export const mockSentiment: Sentiment = 'good';
+
+export const mockKeyTakeaway = 'Portfolio is trending positively with improved collections and declining delinquency rates over the past 3 months.';
 
 export const mockAIInsights: AIInsight[] = [
   {

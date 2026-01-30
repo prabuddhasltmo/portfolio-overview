@@ -1,5 +1,8 @@
-import { Wallet } from 'lucide-react';
+import { Box, Typography, Divider } from '@mui/material';
+import { useTheme, alpha } from '@mui/material/styles';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import type { CashFlow as CashFlowType } from '../../types';
+import CardBox from './CardBox';
 
 interface CashFlowProps {
   data: CashFlowType;
@@ -14,66 +17,104 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function formatChange(value: number): { text: string; color: string } {
-  const prefix = value > 0 ? '+' : '';
-  const color = value > 0 ? 'text-green-600' : value < 0 ? 'text-red-500' : 'text-slate-500';
-  return { text: `${prefix}${value}%`, color };
-}
-
 export default function CashFlow({ data }: CashFlowProps) {
-  const moneyInChange = formatChange(data.moneyInChange);
-  const moneyOutChange = formatChange(data.moneyOutChange);
+  const theme = useTheme();
+  const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
+  const green = (theme.palette as { green?: { dark: string } }).green;
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-7 h-7 bg-blue-50 rounded flex items-center justify-center">
-          <Wallet className="w-4 h-4 text-blue-600" />
-        </div>
-        <h3 className="text-sm font-semibold text-slate-800">Cash Flow</h3>
-      </div>
+    <CardBox
+      customSx={{
+        padding: 2,
+        borderRadius: 2,
+        backgroundColor: alpha(theme.palette.common.white, 0.82),
+      }}
+    >
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              backgroundColor: neutral?.[50],
+              borderRadius: '8px',
+              padding: '10px',
+            }}
+          >
+            <AccountBalanceWalletIcon sx={{ fontSize: '20px', color: theme.palette.text.primary }} />
+          </Box>
+          <Typography sx={{ color: neutral?.[900], fontWeight: 400, fontSize: '18px', lineHeight: '24px' }}>
+            Cash Flow
+          </Typography>
+        </Box>
 
-      <div className="space-y-4">
-        {/* Money In */}
-        <div>
-          <p className="text-xs text-slate-500 mb-0.5">Money In (Collections)</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold text-green-600">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography sx={{ fontSize: '14px', color: neutral?.[900], lineHeight: '20px', fontWeight: 400 }}>
+            Money In (Collections)
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography sx={{ fontSize: '16px', fontWeight: 400, color: green?.dark ?? '#2e7d32', lineHeight: '24px' }}>
               {formatCurrency(data.moneyIn)}
-            </span>
-            <span className={`text-xs font-medium ${moneyInChange.color}`}>
-              {moneyInChange.text}
-            </span>
-          </div>
-        </div>
+            </Typography>
+            {data.moneyInChange !== 0 && (
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  color: data.moneyInChange > 0 ? (green?.dark ?? '#2e7d32') : theme.palette.error.main,
+                  lineHeight: '16px',
+                }}
+              >
+                {data.moneyInChange > 0 ? '+' : ''}{data.moneyInChange.toFixed(1)}%
+              </Typography>
+            )}
+          </Box>
+        </Box>
 
-        {/* Divider */}
-        <div className="border-t border-slate-100"></div>
+        <Divider sx={{ borderColor: neutral?.[200] }} />
 
-        {/* Money Out */}
-        <div>
-          <p className="text-xs text-slate-500 mb-0.5">Money Out (Disbursements)</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold text-red-500">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography sx={{ fontSize: '14px', color: neutral?.[900], lineHeight: '20px', fontWeight: 400 }}>
+            Money Out (Disbursements)
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography sx={{ fontSize: '16px', fontWeight: 400, color: theme.palette.error.main, lineHeight: '24px' }}>
               {formatCurrency(data.moneyOut)}
-            </span>
-            <span className={`text-xs font-medium ${moneyOutChange.color}`}>
-              {moneyOutChange.text}
-            </span>
-          </div>
-        </div>
+            </Typography>
+            {data.moneyOutChange !== 0 && (
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  color: data.moneyOutChange > 0 ? theme.palette.error.main : (green?.dark ?? '#2e7d32'),
+                  lineHeight: '16px',
+                }}
+              >
+                {data.moneyOutChange > 0 ? '+' : ''}{data.moneyOutChange.toFixed(1)}%
+              </Typography>
+            )}
+          </Box>
+        </Box>
 
-        {/* Divider */}
-        <div className="border-t border-slate-100"></div>
+        <Divider sx={{ borderColor: neutral?.[200] }} />
 
-        {/* Net Cash Flow */}
-        <div>
-          <p className="text-xs text-slate-500 mb-0.5">Net Cash Flow</p>
-          <span className="text-lg font-bold text-green-600">
-            + {formatCurrency(data.netCashFlow)}
-          </span>
-        </div>
-      </div>
-    </div>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography sx={{ fontSize: '14px', color: neutral?.[900], lineHeight: '20px', fontWeight: 400 }}>
+            Net Cash Flow
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: '16px',
+              fontWeight: 500,
+              color: data.netCashFlow >= 0 ? (green?.dark ?? '#2e7d32') : theme.palette.error.main,
+              lineHeight: '24px',
+            }}
+          >
+            {data.netCashFlow >= 0 ? '+ ' : ''}{formatCurrency(data.netCashFlow)}
+          </Typography>
+        </Box>
+      </Box>
+    </CardBox>
   );
 }

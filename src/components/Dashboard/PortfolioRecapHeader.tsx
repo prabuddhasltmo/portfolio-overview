@@ -1,0 +1,174 @@
+import { Box, Typography, FormControl, Select, MenuItem, IconButton, Tooltip } from '@mui/material';
+import { useTheme, alpha } from '@mui/material/styles';
+import InsightsIcon from '@mui/icons-material/Insights';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ScienceIcon from '@mui/icons-material/Science';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import type { Scenario } from '../../services/openai';
+import CardBox from './CardBox';
+
+interface PortfolioRecapHeaderProps {
+  month: string;
+  year: number;
+  onRefresh?: () => void;
+  scenarios?: Scenario[];
+  onScenarioChange?: (id: string) => void;
+  loading?: boolean;
+}
+
+export default function PortfolioRecapHeader({
+  month,
+  year,
+  onRefresh,
+  scenarios = [],
+  onScenarioChange,
+  loading = false,
+}: PortfolioRecapHeaderProps) {
+  const theme = useTheme();
+  const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
+  const ui = (theme.palette as { ui?: Record<string, string> }).ui;
+  const activeScenario = scenarios.find((scenario) => scenario.active);
+
+  const selectStyles = {
+    fontSize: '14px',
+    color: neutral?.[800],
+    backgroundColor: theme.palette.common.white,
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: ui?.border ?? neutral?.[200],
+    },
+    '&:hover .MuiOutlinedInput-notchedOutline': {
+      borderColor: theme.palette.primary.main,
+    },
+    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+      borderColor: theme.palette.primary.main,
+    },
+  };
+
+  return (
+    <CardBox
+      customSx={{
+        padding: 2,
+        borderRadius: 2,
+        backgroundColor: alpha(theme.palette.common.white, 0.82),
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '40px',
+            height: '40px',
+            backgroundColor: neutral?.[50],
+            borderRadius: '8px',
+            padding: '10px',
+          }}
+        >
+          <InsightsIcon sx={{ fontSize: '20px', color: theme.palette.text.primary }} />
+        </Box>
+        <Box>
+          <Typography
+            sx={{
+              color: neutral?.[900],
+              fontWeight: 400,
+              fontSize: '18px',
+              lineHeight: '24px',
+            }}
+          >
+            Portfolio Recap
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: '13px',
+              color: neutral?.[400],
+              lineHeight: '18px',
+            }}
+          >
+            AI-powered monthly portfolio analysis
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        {scenarios.length > 0 && (
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <Select
+              value={activeScenario?.id ?? ''}
+              onChange={(event) => onScenarioChange?.(String(event.target.value))}
+              displayEmpty
+              renderValue={(value) => {
+                const selected = scenarios.find((scenario) => scenario.id === value);
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ScienceIcon sx={{ fontSize: 16, color: theme.palette.warning.main }} />
+                    <Typography sx={{ fontSize: '13px', color: theme.palette.warning.main }}>
+                      {selected?.name ?? 'Select scenario'}
+                    </Typography>
+                  </Box>
+                );
+              }}
+              sx={selectStyles}
+            >
+              {scenarios.map((scenario) => (
+                <MenuItem key={scenario.id} value={scenario.id} sx={{ fontSize: '14px' }}>
+                  {scenario.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 1.5,
+            py: 0.75,
+            borderRadius: '6px',
+            border: `1px solid ${ui?.border ?? neutral?.[200]}`,
+            backgroundColor: theme.palette.common.white,
+          }}
+        >
+          <Typography sx={{ fontSize: '14px', color: neutral?.[800] }}>{month}</Typography>
+          <KeyboardArrowDownIcon sx={{ fontSize: 16, color: neutral?.[500] }} />
+        </Box>
+
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 1.5,
+            py: 0.75,
+            borderRadius: '6px',
+            border: `1px solid ${ui?.border ?? neutral?.[200]}`,
+            backgroundColor: theme.palette.common.white,
+          }}
+        >
+          <Typography sx={{ fontSize: '14px', color: neutral?.[800] }}>{year}</Typography>
+          <KeyboardArrowDownIcon sx={{ fontSize: 16, color: neutral?.[500] }} />
+        </Box>
+
+        <Tooltip title="Refresh AI insights">
+          <span>
+            <IconButton
+              onClick={onRefresh}
+              disabled={loading}
+              sx={{
+                color: theme.palette.text.primary,
+                '&:hover': { backgroundColor: neutral?.[100] },
+              }}
+              size="small"
+            >
+              <RefreshIcon sx={{ fontSize: '20px' }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
+    </CardBox>
+  );
+}

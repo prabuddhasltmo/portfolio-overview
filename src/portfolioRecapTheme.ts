@@ -59,9 +59,9 @@ const portfolioRecapTheme = createTheme({
     mode: 'light',
     primary: { main: '#007bff' },
     secondary: { main: '#003399' },
-    success: { main: '#008450' },
-    error: { main: '#d32f2f' },
-    warning: { main: '#ed6c02' },
+    success: { main: '#16a34a', light: '#dcfce7', dark: '#15803d' },
+    error: { main: '#dc2626', light: '#fee2e2', dark: '#b91c1c' },
+    warning: { main: '#f59e0b', light: '#fef3c7', dark: '#d97706' },
     info: { main: '#0288d1' },
     text: {
       primary: '#29323A',

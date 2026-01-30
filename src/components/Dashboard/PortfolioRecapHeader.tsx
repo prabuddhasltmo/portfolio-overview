@@ -129,10 +129,16 @@ export default function PortfolioRecapHeader({
               displayEmpty
               renderValue={(value) => {
                 const selected = scenarios.find((scenario) => scenario.id === value);
+                const scenarioColor =
+                  selected?.id === 'trending-up'
+                    ? theme.palette.success.main
+                    : selected?.id === 'trending-down'
+                      ? theme.palette.error.main
+                      : theme.palette.warning.main;
                 return (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <ScienceIcon sx={{ fontSize: 16, color: theme.palette.warning.main }} />
-                    <Typography sx={{ fontSize: '13px', color: theme.palette.warning.main }}>
+                    <ScienceIcon sx={{ fontSize: 16, color: scenarioColor }} />
+                    <Typography sx={{ fontSize: '13px', color: scenarioColor }}>
                       {selected?.name ?? 'Select scenario'}
                     </Typography>
                   </Box>

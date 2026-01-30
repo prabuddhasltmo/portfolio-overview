@@ -1,61 +1,50 @@
 import { useState, useEffect } from 'react';
 import { Sparkles, RefreshCw } from 'lucide-react';
-import type { PortfolioData, Sentiment } from '../../types';
+import type { PortfolioData } from '../../types';
 import { generateAISummary } from '../../services/openai';
-import { mockAISummary, mockSentiment, mockKeyTakeaway } from '../../data/mockData';
 
 interface AISummaryProps {
   data: PortfolioData;
-  historicalData: PortfolioData[];
   refreshTrigger?: number;
 }
 
-const sentimentColors: Record<Sentiment, string> = {
-  good: 'text-green-700 bg-green-50 border-green-200',
-  neutral: 'text-yellow-700 bg-yellow-50 border-yellow-200',
-  bad: 'text-red-700 bg-red-50 border-red-200',
-};
-
-export default function AISummary({ data, historicalData, refreshTrigger }: AISummaryProps) {
-  const [summary, setSummary] = useState<string>(mockAISummary);
-  const [sentiment, setSentiment] = useState<Sentiment>(mockSentiment);
-  const [keyTakeaway, setKeyTakeaway] = useState<string>(mockKeyTakeaway);
+export default function AISummary({ data, refreshTrigger }: AISummaryProps) {
+  const [summary, setSummary] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSummary = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const result = await generateAISummary(data, historicalData);
-        setSummary(result.summary);
-        setSentiment(result.sentiment);
-        setKeyTakeaway(result.keyTakeaway);
-        setIsAIGenerated(result.summary !== mockAISummary);
+        const result = await generateAISummary(data);
+        setSummary(result);
+        setIsAIGenerated(true);
       } catch (error) {
         console.error('Error fetching AI summary:', error);
-        setSummary(mockAISummary);
-        setSentiment(mockSentiment);
-        setKeyTakeaway(mockKeyTakeaway);
+        setSummary('');
         setIsAIGenerated(false);
+        setError('AI summary unavailable. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchSummary();
-  }, [data, historicalData, refreshTrigger]);
+  }, [data, refreshTrigger]);
 
   const handleRefresh = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const result = await generateAISummary(data, historicalData);
-      setSummary(result.summary);
-      setSentiment(result.sentiment);
-      setKeyTakeaway(result.keyTakeaway);
-      setIsAIGenerated(result.summary !== mockAISummary);
+      const result = await generateAISummary(data);
+      setSummary(result);
+      setIsAIGenerated(true);
     } catch (error) {
       console.error('Error refreshing AI summary:', error);
+      setError('AI summary unavailable. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -100,16 +89,13 @@ export default function AISummary({ data, historicalData, refreshTrigger }: AISu
               <div className="h-3.5 bg-violet-200 rounded animate-pulse w-5/6"></div>
               <div className="h-3.5 bg-violet-200 rounded animate-pulse w-4/6"></div>
             </div>
+          ) : error ? (
+            <p className="text-[13px] text-red-600 leading-relaxed">{error}</p>
           ) : (
-            <>
-              <p
-                className="text-[13px] text-slate-700 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: formatSummary(summary) }}
-              />
-              <div className={`mt-3 px-3 py-2 rounded-md border ${sentimentColors[sentiment]}`}>
-                <p className="text-[12px] font-medium">{keyTakeaway}</p>
-              </div>
-            </>
+            <p
+              className="text-[13px] text-slate-700 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: formatSummary(summary) }}
+            />
           )}
         </div>
       </div>

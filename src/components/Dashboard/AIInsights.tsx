@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Lightbulb, RefreshCw } from 'lucide-react';
 import type { PortfolioData, AIInsight } from '../../types';
 import { generateAIInsights } from '../../services/openai';
-import { mockAIInsights } from '../../data/mockData';
 
 interface AIInsightsProps {
   data: PortfolioData;
@@ -29,21 +28,24 @@ const categoryColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function AIInsights({ data, refreshTrigger }: AIInsightsProps) {
-  const [insights, setInsights] = useState<AIInsight[]>(mockAIInsights);
+  const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchInsights = async () => {
       setLoading(true);
+      setError(null);
       try {
         const result = await generateAIInsights(data);
         setInsights(result);
-        setIsAIGenerated(JSON.stringify(result) !== JSON.stringify(mockAIInsights));
+        setIsAIGenerated(true);
       } catch (error) {
         console.error('Error fetching AI insights:', error);
-        setInsights(mockAIInsights);
+        setInsights([]);
         setIsAIGenerated(false);
+        setError('AI insights unavailable. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -54,12 +56,14 @@ export default function AIInsights({ data, refreshTrigger }: AIInsightsProps) {
 
   const handleRefresh = async () => {
     setLoading(true);
+    setError(null);
     try {
       const result = await generateAIInsights(data);
       setInsights(result);
       setIsAIGenerated(true);
     } catch (error) {
       console.error('Error refreshing AI insights:', error);
+      setError('AI insights unavailable. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -98,6 +102,8 @@ export default function AIInsights({ data, refreshTrigger }: AIInsightsProps) {
             </div>
           ))}
         </div>
+      ) : error ? (
+        <p className="text-[13px] text-red-600 leading-relaxed">{error}</p>
       ) : (
         <div className="space-y-3">
           {insights.map((insight) => {

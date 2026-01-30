@@ -362,10 +362,15 @@ CURRENT PORTFOLIO DATA (${portfolioData.month} ${portfolioData.year}):
 - New Loans This Month: ${portfolioData.trends?.newLoans}
 - Loans Paid Off: ${portfolioData.trends?.paidOff}
 
+ACTION ITEMS (specific delinquent loans to follow up—use these when the user asks who to message or which borrowers are delinquent):
+${(portfolioData.actionItems && portfolioData.actionItems.length > 0)
+  ? portfolioData.actionItems.map(a => `- Loan ${a.id}: ${a.borrower}, $${(a.amount || 0).toLocaleString()}, ${a.daysPastDue} days past due, priority ${a.priority}`).join('\n')
+  : 'None listed.'}
+
 HISTORICAL DATA (Past 3 Months):
 ${historicalSummary}
 
-Answer questions factually and cite specific numbers from the data. Be concise but thorough.`;
+Answer questions factually and cite specific numbers from the data. When asked who to message or which borrowers are delinquent, list the specific loans and borrowers from ACTION ITEMS above. Be concise but thorough.`;
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -601,6 +606,324 @@ app.get('/api/portfolio', (_req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+const loadMessages = () => {
+  try {
+    const filePath = join(DATA_DIR, 'messages.json');
+    const content = readFileSync(filePath, 'utf-8');
+    return JSON.parse(content).messages || [];
+  } catch {
+    return [];
+  }
+};
+
+let messagesStore = loadMessages();
+let messageIdCounter = 100;
+
+/**
+ * @swagger
+ * /api/ai/draft-email:
+ *   post:
+ *     summary: Generate AI-drafted email content
+ *     tags: [AI]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               loanId:
+ *                 type: string
+ *               borrowerName:
+ *                 type: string
+ *               amount:
+ *                 type: number
+ *               daysPastDue:
+ *                 type: number
+ *               emailType:
+ *                 type: string
+ *                 enum: [collection_followup, check_in, refinance_offer, general]
+ *     responses:
+ *       200:
+ *         description: AI-generated email draft
+ */
+app.post('/api/ai/draft-email', async (req, res) => {
+  const client = getClient();
+  const { loanId, borrowerName, amount, daysPastDue, emailType = 'general' } = req.body;
+
+  if (!client) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+
+  const prompts = {
+    collection_followup: `You are a professional loan servicer. Draft a compassionate but professional collection follow-up email. Be empathetic, offer to discuss payment options, and maintain a positive, helpful tone. Do not be threatening or aggressive.`,
+    check_in: `You are a professional loan servicer. Draft a brief, friendly check-in email to maintain the borrower relationship. Keep it warm and professional.`,
+    refinance_offer: `You are a professional loan servicer. Draft a professional email offering refinancing options. Highlight potential benefits based on good payment history.`,
+    general: `You are a professional loan servicer. Draft a professional email regarding the borrower's loan account.`,
+  };
+
+  const contextInfo = [];
+  if (borrowerName) contextInfo.push(`Borrower Name: ${borrowerName}`);
+  if (loanId) contextInfo.push(`Loan ID: ${loanId}`);
+  if (amount) contextInfo.push(`Outstanding Balance: $${amount.toLocaleString()}`);
+  if (daysPastDue) contextInfo.push(`Days Past Due: ${daysPastDue}`);
+
+  const prompt = `${prompts[emailType] || prompts.general}
+
+Context:
+${contextInfo.join('\n')}
+
+Generate a personalized email. Return a JSON object with:
+- "subject": A professional email subject line
+- "body": The email body (use \\n for line breaks between paragraphs)
+
+Keep the email concise (3-4 paragraphs max). Be professional but warm.
+Return ONLY the JSON object, no markdown or extra text.`;
+
+  try {
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    let content = response.choices[0]?.message?.content || '';
+    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const parsed = JSON.parse(content);
+    res.json({
+      subject: parsed.subject || `Regarding Your Loan ${loanId || ''}`.trim(),
+      body: parsed.body || '',
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/ai/draft-message', async (req, res) => {
+  const client = getClient();
+  const { loanId, borrowerName, amount, daysPastDue } = req.body;
+
+  if (!client) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+
+  const contextInfo = [];
+  if (borrowerName) contextInfo.push(`Borrower Name: ${borrowerName}`);
+  if (loanId) contextInfo.push(`Loan ID: ${loanId}`);
+  if (amount) contextInfo.push(`Outstanding Balance: $${amount.toLocaleString()}`);
+  if (daysPastDue) contextInfo.push(`Days Past Due: ${daysPastDue}`);
+
+  const prompt = `You are a professional loan servicer. Draft a SHORT, conversational message for the borrower's portal (2-way messaging). Be brief and friendly—this is a quick message, not a formal letter.
+
+Context:
+${contextInfo.join('\n')}
+
+Return a JSON object with:
+- "subject": A very short subject line (few words, e.g. "Quick check-in" or "Regarding loan LN-2024-001")
+- "body": A short message body: 1-3 sentences max. Conversational tone. Offer to help or ask a quick question. Use \\n for line breaks if needed.
+
+Keep it concise—portal messages should be brief. Return ONLY the JSON object, no markdown.`;
+
+  try {
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    let content = response.choices[0]?.message?.content || '';
+    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const parsed = JSON.parse(content);
+    res.json({
+      subject: parsed.subject || `Re: Loan ${loanId || ''}`.trim(),
+      body: parsed.body || '',
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/messages:
+ *   get:
+ *     summary: Get messages by folder
+ *     tags: [Messages]
+ *     parameters:
+ *       - in: query
+ *         name: folder
+ *         schema:
+ *           type: string
+ *           enum: [inbox, sent]
+ *         description: Message folder to retrieve
+ *     responses:
+ *       200:
+ *         description: List of messages
+ */
+app.get('/api/messages', (req, res) => {
+  const folder = req.query.folder || 'inbox';
+  const filtered = messagesStore.filter(m => m.folder === folder);
+  const sorted = filtered.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+  res.json({ messages: sorted });
+});
+
+/**
+ * @swagger
+ * /api/messages/unread-count:
+ *   get:
+ *     summary: Get unread message count
+ *     tags: [Messages]
+ *     responses:
+ *       200:
+ *         description: Unread count
+ */
+app.get('/api/messages/unread-count', (_req, res) => {
+  const count = messagesStore.filter(m => m.folder === 'inbox' && !m.isRead).length;
+  res.json({ count });
+});
+
+/**
+ * @swagger
+ * /api/messages/{id}:
+ *   get:
+ *     summary: Get a single message
+ *     tags: [Messages]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Message details
+ *       404:
+ *         description: Message not found
+ */
+app.get('/api/messages/:id', (req, res) => {
+  const message = messagesStore.find(m => m.id === req.params.id);
+  if (!message) {
+    return res.status(404).json({ error: 'Message not found' });
+  }
+  res.json(message);
+});
+
+/**
+ * @swagger
+ * /api/messages/send:
+ *   post:
+ *     summary: Send a new message
+ *     tags: [Messages]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               to:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   email:
+ *                     type: string
+ *               from:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   email:
+ *                     type: string
+ *               subject:
+ *                 type: string
+ *               body:
+ *                 type: string
+ *               priority:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Message sent successfully
+ */
+app.post('/api/messages/send', (req, res) => {
+  const { to, from, subject, body, priority = 0 } = req.body;
+
+  if (!to || !subject || !body) {
+    return res.status(400).json({ error: 'Missing required fields: to, subject, body' });
+  }
+
+  const newMessage = {
+    id: `msg-${Date.now()}-${++messageIdCounter}`,
+    from: from || { name: 'Portfolio Services', email: 'services@lender.com' },
+    to,
+    subject,
+    body,
+    priority,
+    sentAt: new Date().toISOString(),
+    isRead: true,
+    folder: 'sent',
+  };
+
+  messagesStore.push(newMessage);
+  res.json(newMessage);
+});
+
+/**
+ * @swagger
+ * /api/messages/{id}/read:
+ *   post:
+ *     summary: Mark a message as read
+ *     tags: [Messages]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Message marked as read
+ *       404:
+ *         description: Message not found
+ */
+app.post('/api/messages/:id/read', (req, res) => {
+  const message = messagesStore.find(m => m.id === req.params.id);
+  if (!message) {
+    return res.status(404).json({ error: 'Message not found' });
+  }
+  message.isRead = true;
+  res.json({ success: true });
+});
+
+/**
+ * @swagger
+ * /api/messages/{id}:
+ *   delete:
+ *     summary: Delete a message
+ *     tags: [Messages]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Message deleted
+ *       404:
+ *         description: Message not found
+ */
+app.delete('/api/messages/:id', (req, res) => {
+  const index = messagesStore.findIndex(m => m.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Message not found' });
+  }
+  messagesStore.splice(index, 1);
+  res.json({ success: true });
 });
 
 app.use(express.static(join(__dirname, 'dist')));

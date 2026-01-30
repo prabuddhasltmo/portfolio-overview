@@ -1,12 +1,17 @@
-import { Box, Typography, Chip, Link } from '@mui/material';
+import { Box, Typography, Chip, Link, IconButton, Tooltip } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import MessageOutlinedIcon from '@mui/icons-material/MessageOutlined';
 import type { ActionItem } from '../../types';
+import type { EmailDraftContext } from '../../types/email';
 import CardBox from './CardBox';
 
 interface ActionItemsProps {
   items: ActionItem[];
+  onMessageClick?: (context: EmailDraftContext) => void;
+  onEmailClick?: (context: EmailDraftContext) => void;
 }
 
 function formatCurrency(value: number): string {
@@ -31,9 +36,24 @@ const getPriorityColor = (priority: string, theme: Theme) => {
   }
 };
 
-export default function ActionItems({ items }: ActionItemsProps) {
+export default function ActionItems({ items, onMessageClick, onEmailClick }: ActionItemsProps) {
   const theme = useTheme();
   const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
+  const blueColor =
+    (theme.palette as { ui?: { iconBlue?: string } }).ui?.iconBlue ??
+    theme.palette.primary.main;
+
+  const buildContext = (item: ActionItem): EmailDraftContext => ({
+    loanId: item.id,
+    borrowerName: item.borrower,
+    borrowerEmail: item.borrowerEmail,
+    amount: item.amount,
+    daysPastDue: item.daysPastDue,
+    emailType: 'collection_followup',
+  });
+
+  const handleMessageClick = (item: ActionItem) => onMessageClick?.(buildContext(item));
+  const handleEmailClick = (item: ActionItem) => onEmailClick?.(buildContext(item));
 
   return (
     <CardBox
@@ -112,6 +132,50 @@ export default function ActionItems({ items }: ActionItemsProps) {
                   Follow up on {item.daysPastDue}+ days past due.
                 </Typography>
               </Box>
+              {(onMessageClick || onEmailClick) && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
+                  {onMessageClick && (
+                    <Tooltip title="Message borrower (2-way)" placement="top">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMessageClick(item);
+                        }}
+                        sx={{
+                          color: blueColor,
+                          backgroundColor: alpha(blueColor, 0.1),
+                          '&:hover': {
+                            backgroundColor: alpha(blueColor, 0.2),
+                          },
+                        }}
+                      >
+                        <MessageOutlinedIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {onEmailClick && (
+                    <Tooltip title="Draft email (1-way, no-reply)" placement="top">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEmailClick(item);
+                        }}
+                        sx={{
+                          color: blueColor,
+                          backgroundColor: alpha(blueColor, 0.1),
+                          '&:hover': {
+                            backgroundColor: alpha(blueColor, 0.2),
+                          },
+                        }}
+                      >
+                        <MailOutlineIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+              )}
               <Box sx={{ textAlign: 'right', flexShrink: 0, ml: 2 }}>
                 <Typography sx={{ fontSize: '14px', fontWeight: 400, color: neutral?.[900], lineHeight: '20px' }}>
                   {formatCurrency(item.amount)}

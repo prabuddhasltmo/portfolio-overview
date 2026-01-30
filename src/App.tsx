@@ -13,9 +13,11 @@ import AskAIChat from './components/Dashboard/AskAIChat';
 import ActionItems from './components/Dashboard/ActionItems';
 import CardBox from './components/Dashboard/CardBox';
 import NoDataForPeriodCard from './components/Dashboard/NoDataForPeriodCard';
+import { DraftEmailModal, SendMessageModal } from './components/Email';
 import { portfolioData as fallbackData, historicalPortfolioData as fallbackHistorical } from './data/mockData';
 import { fetchPortfolioData, fetchScenarios, switchScenario, type Scenario, type PortfolioResponse } from './services/openai';
 import type { PortfolioData } from './types';
+import type { EmailDraftContext } from './types/email';
 import portfolioRecapTheme from './portfolioRecapTheme';
 import { periodKey, parsePeriodKey } from './constants/periods';
 
@@ -26,6 +28,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [selectedPeriodKey, setSelectedPeriodKey] = useState<string | null>(null);
+  const [draftEmailContext, setDraftEmailContext] = useState<EmailDraftContext | null>(null);
+  const [draftEmailOpen, setDraftEmailOpen] = useState(false);
+  const [sendMessageContext, setSendMessageContext] = useState<EmailDraftContext | null>(null);
+  const [sendMessageOpen, setSendMessageOpen] = useState(false);
 
   const rawCurrent: PortfolioData = portfolio?.current || fallbackData;
   const rawHistorical: PortfolioData[] = portfolio?.historical || fallbackHistorical;
@@ -88,6 +94,26 @@ function App() {
 
   const handleRefresh = () => {
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const openDraftEmail = (context: EmailDraftContext) => {
+    setDraftEmailContext(context);
+    setDraftEmailOpen(true);
+  };
+
+  const closeDraftEmail = () => {
+    setDraftEmailOpen(false);
+    setDraftEmailContext(null);
+  };
+
+  const openSendMessage = (context: EmailDraftContext) => {
+    setSendMessageContext(context);
+    setSendMessageOpen(true);
+  };
+
+  const closeSendMessage = () => {
+    setSendMessageOpen(false);
+    setSendMessageContext(null);
   };
 
   return (
@@ -200,11 +226,18 @@ function App() {
                     }}
                   >
                     {hasDataForSelectedPeriod ? (
-                      <AIInsights data={currentData} refreshTrigger={refreshTrigger} />
+                      <AIInsights
+                        data={currentData}
+                        refreshTrigger={refreshTrigger}
+                      />
                     ) : (
                       <NoDataForPeriodCard />
                     )}
-                    <ActionItems items={currentData.actionItems} />
+                    <ActionItems
+                      items={currentData.actionItems}
+                      onMessageClick={openSendMessage}
+                      onEmailClick={openDraftEmail}
+                    />
                   </Box>
 
                   <AskAIChat
@@ -219,6 +252,21 @@ function App() {
           </Box>
         </Box>
       </Box>
+
+      {draftEmailContext && (
+        <DraftEmailModal
+          open={draftEmailOpen}
+          onClose={closeDraftEmail}
+          context={draftEmailContext}
+        />
+      )}
+      {sendMessageContext && (
+        <SendMessageModal
+          open={sendMessageOpen}
+          onClose={closeSendMessage}
+          context={sendMessageContext}
+        />
+      )}
     </ThemeProvider>
   );
 }

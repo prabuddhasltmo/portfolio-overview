@@ -1,0 +1,106 @@
+{
+  "messages": [
+    {
+      "id": "msg-001",
+      "from": {
+        "name": "Smith, John & Jane",
+        "email": "johnsmith@email.com"
+      },
+      "to": {
+        "name": "Portfolio Services",
+        "email": "services@lender.com"
+      },
+      "subject": "Question about upcoming payment",
+      "body": "Hello,\n\nI wanted to reach out regarding our loan (LN-2024-001). We have a question about the upcoming payment due on February 15th.\n\nCould you please confirm the exact amount due including any late charges?\n\nThank you,\nJohn Smith",
+      "priority": 0,
+      "sentAt": "2026-01-28T14:30:00Z",
+      "isRead": false,
+      "folder": "inbox"
+    },
+    {
+      "id": "msg-002",
+      "from": {
+        "name": "Johnson, Michael",
+        "email": "mjohnson@email.com"
+      },
+      "to": {
+        "name": "Portfolio Services",
+        "email": "services@lender.com"
+      },
+      "subject": "Payment arrangement request",
+      "body": "Dear Servicing Team,\n\nI am writing to request a payment arrangement for my loan (LN-2024-015). Due to recent circumstances, I am having difficulty making the full payment this month.\n\nWould it be possible to discuss a temporary payment plan? I am committed to getting back on track.\n\nPlease let me know what options are available.\n\nSincerely,\nMichael Johnson",
+      "priority": 2,
+      "sentAt": "2026-01-27T09:15:00Z",
+      "isRead": false,
+      "folder": "inbox"
+    },
+    {
+      "id": "msg-003",
+      "from": {
+        "name": "Williams, Sarah",
+        "email": "swilliams@email.com"
+      },
+      "to": {
+        "name": "Portfolio Services",
+        "email": "services@lender.com"
+      },
+      "subject": "Insurance documentation submitted",
+      "body": "Hi,\n\nI have submitted the updated insurance documentation through the portal as requested.\n\nPlease confirm receipt and let me know if you need anything else.\n\nBest regards,\nSarah Williams",
+      "priority": 0,
+      "sentAt": "2026-01-25T11:45:00Z",
+      "isRead": true,
+      "folder": "inbox"
+    },
+    {
+      "id": "msg-004",
+      "from": {
+        "name": "Davis, Robert",
+        "email": "rdavis@email.com"
+      },
+      "to": {
+        "name": "Portfolio Services",
+        "email": "services@lender.com"
+      },
+      "subject": "Payoff quote request",
+      "body": "Hello,\n\nI would like to request a payoff quote for loan LN-2024-042. We are considering paying off the loan early.\n\nCould you please provide the payoff amount good through the end of February?\n\nThank you,\nRobert Davis",
+      "priority": 1,
+      "sentAt": "2026-01-24T16:20:00Z",
+      "isRead": true,
+      "folder": "inbox"
+    },
+    {
+      "id": "msg-005",
+      "from": {
+        "name": "Portfolio Services",
+        "email": "services@lender.com"
+      },
+      "to": {
+        "name": "Williams, Sarah",
+        "email": "swilliams@email.com"
+      },
+      "subject": "RE: Insurance documentation submitted",
+      "body": "Dear Sarah,\n\nThank you for submitting your updated insurance documentation. We have received and processed your submission.\n\nYour account is now in good standing regarding insurance requirements.\n\nPlease don't hesitate to reach out if you have any questions.\n\nBest regards,\nPortfolio Services Team",
+      "priority": 0,
+      "sentAt": "2026-01-25T14:30:00Z",
+      "isRead": true,
+      "folder": "sent"
+    },
+    {
+      "id": "msg-006",
+      "from": {
+        "name": "Portfolio Services",
+        "email": "services@lender.com"
+      },
+      "to": {
+        "name": "Davis, Robert",
+        "email": "rdavis@email.com"
+      },
+      "subject": "RE: Payoff quote request",
+      "body": "Dear Robert,\n\nThank you for your payoff inquiry for loan LN-2024-042.\n\nYour payoff quote good through February 28, 2026 is $142,567.89. This includes:\n- Principal Balance: $140,234.56\n- Accrued Interest: $1,890.33\n- Recording Fee: $443.00\n\nPlease note this quote is valid for 30 days. Contact us if you would like to proceed.\n\nBest regards,\nPortfolio Services Team",
+      "priority": 0,
+      "sentAt": "2026-01-24T17:45:00Z",
+      "isRead": true,
+      "folder": "sent"
+    }
+  ]
+}

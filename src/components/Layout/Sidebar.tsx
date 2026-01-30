@@ -54,6 +54,7 @@ interface SidebarItemProps {
   expanded?: boolean;
   level?: number;
   onClick?: () => void;
+  badge?: number;
 }
 
 function SidebarItem({
@@ -64,6 +65,7 @@ function SidebarItem({
   expanded,
   level = 0,
   onClick,
+  badge,
 }: SidebarItemProps) {
   const theme = useTheme();
   const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
@@ -140,6 +142,27 @@ function SidebarItem({
       >
         {label}
       </Typography>
+      {badge !== undefined && badge > 0 && (
+        <Box
+          component="span"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 18,
+            height: 18,
+            px: 0.5,
+            borderRadius: '9px',
+            backgroundColor: theme.palette.primary.main,
+            color: 'white',
+            fontSize: '11px',
+            fontWeight: 600,
+            flexShrink: 0,
+          }}
+        >
+          {badge > 99 ? '99+' : badge}
+        </Box>
+      )}
       {hasChildren && (
         <Box component="span" sx={{ display: 'flex', flexShrink: 0, opacity: 0.7 }}>
           {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}

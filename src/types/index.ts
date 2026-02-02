@@ -72,15 +72,48 @@ export interface SidebarItem {
   children?: SidebarItem[];
 }
 
+// Chart data structure for LLM responses
+export interface ChartDataSeries {
+  dataKey: string;
+  name: string;
+}
+
+export interface ChartData {
+  type: 'bar' | 'line' | 'area';
+  title: string;
+  xAxisLabel: string;
+  yAxisLabel: string;
+  /** Single series: data with "value". Multi-series: data with multiple keys (e.g. moneyIn, moneyOut) and use "series". */
+  data: Array<Record<string, string | number>>;
+  /** For multi-series bar charts (e.g. Money In vs Money Out). Each item: { dataKey: "moneyIn", name: "Money In" }. */
+  series?: ChartDataSeries[];
+}
+
+// CTA actions the AI can suggest
+export type CTAAction =
+  | { type: 'late_notices'; borrowerId?: string }
+  | { type: 'send_message'; borrowerId?: string; borrowerEmail?: string }
+  | { type: 'view_report'; reportType: 'late_notices' | 'borrower_statement' | 'escrow_analysis' };
+
+export interface ChatCTA {
+  label: string;
+  icon: 'mail' | 'file' | 'alert' | 'send';
+  action: CTAAction;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  chart?: ChartData;
+  ctas?: ChatCTA[];
 }
 
 export interface ChatResponse {
   answer: string;
   suggestions: string[];
+  chart?: ChartData;
+  ctas?: ChatCTA[];
 }
 
 export interface ReportMetric {

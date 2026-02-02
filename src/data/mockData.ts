@@ -16,12 +16,12 @@ export const portfolioData: PortfolioData = {
     netCashFlow: 2325000,
   },
   delinquent: {
-    total: 87,
-    percentage: 7.0,
+    total: 1121,
+    percentage: 90.0,
     breakdown: {
-      thirtyDays: 45,
-      sixtyDays: 28,
-      ninetyPlusDays: 14,
+      thirtyDays: 583,
+      sixtyDays: 336,
+      ninetyPlusDays: 202,
     },
   },
   trends: {
@@ -73,11 +73,11 @@ export const historicalPortfolioData: PortfolioData[] = [
       netCashFlow: 1905000,
     },
     delinquent: {
-      total: 105,
-      percentage: 8.9,
+      total: 118,
+      percentage: 10.0,
       breakdown: {
-        thirtyDays: 52,
-        sixtyDays: 35,
+        thirtyDays: 62,
+        sixtyDays: 38,
         ninetyPlusDays: 18,
       },
     },
@@ -106,12 +106,12 @@ export const historicalPortfolioData: PortfolioData[] = [
       netCashFlow: 2042000,
     },
     delinquent: {
-      total: 96,
-      percentage: 8.0,
+      total: 360,
+      percentage: 30.0,
       breakdown: {
-        thirtyDays: 50,
-        sixtyDays: 30,
-        ninetyPlusDays: 16,
+        thirtyDays: 187,
+        sixtyDays: 108,
+        ninetyPlusDays: 65,
       },
     },
     trends: {
@@ -139,12 +139,12 @@ export const historicalPortfolioData: PortfolioData[] = [
       netCashFlow: 2190000,
     },
     delinquent: {
-      total: 92,
-      percentage: 7.5,
+      total: 735,
+      percentage: 60.0,
       breakdown: {
-        thirtyDays: 48,
-        sixtyDays: 29,
-        ninetyPlusDays: 15,
+        thirtyDays: 382,
+        sixtyDays: 221,
+        ninetyPlusDays: 132,
       },
     },
     trends: {

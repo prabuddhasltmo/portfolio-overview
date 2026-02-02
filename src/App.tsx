@@ -15,7 +15,7 @@ import CardBox from './components/Dashboard/CardBox';
 import NoDataForPeriodCard from './components/Dashboard/NoDataForPeriodCard';
 import ReportMockupModal from './components/Dashboard/ReportMockupModal';
 import SelectBorrowersForReportModal from './components/Dashboard/SelectBorrowersForReportModal';
-import { DraftEmailModal, SendMessageModal } from './components/Email';
+import { SendMessageModal } from './components/Email';
 import { portfolioData as fallbackData, historicalPortfolioData as fallbackHistorical } from './data/mockData';
 import { fetchPortfolioData, fetchScenarios, switchScenario, type Scenario, type PortfolioResponse } from './services/openai';
 import type { PortfolioData } from './types';
@@ -31,8 +31,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [selectedPeriodKey, setSelectedPeriodKey] = useState<string | null>(null);
-  const [draftEmailContext, setDraftEmailContext] = useState<EmailDraftContext | null>(null);
-  const [draftEmailOpen, setDraftEmailOpen] = useState(false);
   const [sendMessageContext, setSendMessageContext] = useState<EmailDraftContext | null>(null);
   const [sendMessageOpen, setSendMessageOpen] = useState(false);
   const [reportMockupOpen, setReportMockupOpen] = useState(false);
@@ -104,18 +102,8 @@ function App() {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  const openDraftEmail = (context: EmailDraftContext) => {
-    setDraftEmailContext(context);
-    setDraftEmailOpen(true);
-  };
-
-  const closeDraftEmail = () => {
-    setDraftEmailOpen(false);
-    setDraftEmailContext(null);
-  };
-
-  const openSendMessage = (context: EmailDraftContext) => {
-    setSendMessageContext(context);
+  const openSendMessage = (context?: EmailDraftContext | null) => {
+    setSendMessageContext(context ?? null);
     setSendMessageOpen(true);
   };
 
@@ -212,6 +200,7 @@ function App() {
                       data={currentData}
                       historicalData={historicalData}
                       refreshTrigger={refreshTrigger}
+                      scenarioSentiment={portfolio?.sentiment}
                     />
                   ) : (
                     <NoDataForPeriodCard />
@@ -276,6 +265,9 @@ function App() {
                   <AskAIChat
                     portfolioData={currentData}
                     historicalData={historicalData}
+                    onOpenLateNotices={() => openSelectBorrowersForReport('late_notices')}
+                    onOpenSendMessage={openSendMessage}
+                    onOpenReport={openSelectBorrowersForReport}
                   />
 
                   {lastUpdated && <GeneratedTimestamp timestamp={lastUpdated} />}
@@ -286,20 +278,12 @@ function App() {
         </Box>
       </Box>
 
-      {draftEmailContext && (
-        <DraftEmailModal
-          open={draftEmailOpen}
-          onClose={closeDraftEmail}
-          context={draftEmailContext}
-        />
-      )}
-      {sendMessageContext && (
-        <SendMessageModal
-          open={sendMessageOpen}
-          onClose={closeSendMessage}
-          context={sendMessageContext}
-        />
-      )}
+      <SendMessageModal
+        open={sendMessageOpen}
+        onClose={closeSendMessage}
+        borrowers={currentData.actionItems ?? []}
+        initialContext={sendMessageContext}
+      />
       {reportTypeForSelection && (
         <SelectBorrowersForReportModal
           open={selectBorrowersOpen}

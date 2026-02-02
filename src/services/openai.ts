@@ -13,6 +13,7 @@ export interface Scenario {
 export interface PortfolioResponse {
   scenario: string;
   name: string;
+  sentiment: 'good' | 'neutral' | 'bad';
   current: PortfolioData;
   historical: PortfolioData[];
 }
@@ -130,6 +131,8 @@ export async function chatWithAI(
     return {
       answer: result.answer || "I couldn't generate a response. Please try again.",
       suggestions: result.suggestions || [],
+      chart: result.chart || undefined,
+      ctas: result.ctas || undefined,
     };
   } catch (error) {
     console.error('Error chatting with AI:', error);
@@ -140,6 +143,8 @@ export async function chatWithAI(
         'How are collections trending?',
         'What loans need attention?',
       ],
+      chart: undefined,
+      ctas: undefined,
     };
   }
 }

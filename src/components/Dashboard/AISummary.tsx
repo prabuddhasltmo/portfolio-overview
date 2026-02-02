@@ -6,18 +6,18 @@ import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import type { PortfolioData, Sentiment } from '../../types';
 import { generateAISummary } from '../../services/openai';
-import { mockAISummary, mockSentiment, mockKeyTakeaway } from '../../data/mockData';
+import { mockAISummary, mockKeyTakeaway } from '../../data/mockData';
 import CardBox from './CardBox';
 
 interface AISummaryProps {
   data: PortfolioData;
   historicalData: PortfolioData[];
   refreshTrigger?: number;
+  scenarioSentiment?: Sentiment;
 }
 
-export default function AISummary({ data, historicalData, refreshTrigger }: AISummaryProps) {
+export default function AISummary({ data, historicalData, refreshTrigger, scenarioSentiment }: AISummaryProps) {
   const [summary, setSummary] = useState<string>(mockAISummary);
-  const [sentiment, setSentiment] = useState<Sentiment>(mockSentiment);
   const [keyTakeaway, setKeyTakeaway] = useState<string>(mockKeyTakeaway);
   const [loading, setLoading] = useState(false);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
@@ -28,10 +28,12 @@ export default function AISummary({ data, historicalData, refreshTrigger }: AISu
     (theme.palette as { blue?: string }).blue ??
     theme.palette.primary.main;
 
+  // Use scenario sentiment (from the scenario JSON file) for the color
+  const effectiveSentiment = scenarioSentiment ?? 'neutral';
   const sentimentColor =
-    sentiment === 'good'
+    effectiveSentiment === 'good'
       ? theme.palette.success.main
-      : sentiment === 'bad'
+      : effectiveSentiment === 'bad'
         ? theme.palette.error.main
         : theme.palette.warning.main;
 
@@ -41,13 +43,11 @@ export default function AISummary({ data, historicalData, refreshTrigger }: AISu
       try {
         const result = await generateAISummary(data, historicalData);
         setSummary(result.summary);
-        setSentiment(result.sentiment);
         setKeyTakeaway(result.keyTakeaway);
         setIsAIGenerated(result.summary !== mockAISummary);
       } catch (error) {
         console.error('Error fetching AI summary:', error);
         setSummary(mockAISummary);
-        setSentiment(mockSentiment);
         setKeyTakeaway(mockKeyTakeaway);
         setIsAIGenerated(false);
       } finally {
@@ -63,7 +63,6 @@ export default function AISummary({ data, historicalData, refreshTrigger }: AISu
     try {
       const result = await generateAISummary(data, historicalData);
       setSummary(result.summary);
-      setSentiment(result.sentiment);
       setKeyTakeaway(result.keyTakeaway);
       setIsAIGenerated(result.summary !== mockAISummary);
     } catch (error) {

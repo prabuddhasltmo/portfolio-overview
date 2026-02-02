@@ -27,6 +27,7 @@ export interface EmailFormData {
   cc?: string;
   bcc?: string;
   addToConversationLog?: boolean;
+  attachmentName?: string;
 }
 
 export interface Message {
@@ -46,9 +47,3 @@ export interface AIEmailDraftResponse {
   body: string;
 }
 
-export interface DraftEmailModalProps {
-  open: boolean;
-  onClose: () => void;
-  context: EmailDraftContext;
-  onSend?: (email: EmailFormData) => Promise<void>;
-}

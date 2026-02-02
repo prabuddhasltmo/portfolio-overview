@@ -9,17 +9,30 @@ import {
   alpha,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { Sparkles, Send, Trash2 } from 'lucide-react';
+import { Sparkles, Send, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import CardBox from './CardBox';
+import ChatChart from './ChatChart';
+import ChatCTAButtons from './ChatCTAButtons';
 import { chatWithAI } from '../../services/openai';
-import type { PortfolioData, ChatMessage } from '../../types';
+import type { PortfolioData, ChatMessage, CTAAction } from '../../types';
+import type { EmailDraftContext } from '../../types/email';
+import type { ReportMockupType } from '../../types/reportMockup';
 
 interface AskAIChatProps {
   portfolioData: PortfolioData;
   historicalData: PortfolioData[];
+  onOpenLateNotices?: () => void;
+  onOpenSendMessage?: (context: EmailDraftContext) => void;
+  onOpenReport?: (type: ReportMockupType) => void;
 }
 
-export default function AskAIChat({ portfolioData, historicalData }: AskAIChatProps) {
+export default function AskAIChat({
+  portfolioData,
+  historicalData,
+  onOpenLateNotices,
+  onOpenSendMessage,
+  onOpenReport,
+}: AskAIChatProps) {
   const theme = useTheme();
   const blueColor =
     (theme.palette as { ui?: { iconBlue?: string }; blue?: string }).ui?.iconBlue ??
@@ -28,12 +41,39 @@ export default function AskAIChat({ portfolioData, historicalData }: AskAIChatPr
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([
     'What is the current delinquency rate?',
     'How are collections trending?',
     'Which loans need attention?',
   ]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleExpand = () => {
+    setExpanded((prev) => !prev);
+  };
+
+  const handleCTAAction = (action: CTAAction) => {
+    switch (action.type) {
+      case 'late_notices':
+        onOpenLateNotices?.();
+        break;
+      case 'send_message': {
+        const sendContext: EmailDraftContext = {
+          loanId: action.borrowerId || '',
+          borrowerName: action.borrowerId || 'Borrower',
+          borrowerEmail: action.borrowerEmail,
+          amount: 0,
+          emailType: 'collection_followup',
+        };
+        onOpenSendMessage?.(sendContext);
+        break;
+      }
+      case 'view_report':
+        onOpenReport?.(action.reportType);
+        break;
+    }
+  };
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -62,6 +102,8 @@ export default function AskAIChat({ portfolioData, historicalData }: AskAIChatPr
         role: 'assistant',
         content: response.answer,
         timestamp: new Date(),
+        chart: response.chart ?? undefined,
+        ctas: response.ctas ?? undefined,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -106,6 +148,8 @@ export default function AskAIChat({ portfolioData, historicalData }: AskAIChatPr
         backgroundColor: alpha(theme.palette.common.white, 0.82),
         border: `1px solid ${alpha(blueColor, 0.2)}`,
         boxShadow: `0 2px 8px ${alpha(blueColor, 0.08)}`,
+        minHeight: expanded ? 600 : 'auto',
+        transition: 'min-height 0.3s ease-in-out',
       }}
     >
       <Box
@@ -150,27 +194,45 @@ export default function AskAIChat({ portfolioData, historicalData }: AskAIChatPr
             }}
           />
         </Box>
-        {messages.length > 0 && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <IconButton
             size="small"
-            onClick={handleClear}
+            onClick={handleToggleExpand}
             sx={{
               color: theme.palette.neutral?.[400],
               '&:hover': {
-                color: theme.palette.error.main,
-                backgroundColor: alpha(theme.palette.error.main, 0.1),
+                color: blueColor,
+                backgroundColor: alpha(blueColor, 0.1),
               },
             }}
           >
-            <Trash2 size={18} />
+            {expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </IconButton>
-        )}
+          {messages.length > 0 && (
+            <IconButton
+              size="small"
+              onClick={handleClear}
+              sx={{
+                color: theme.palette.neutral?.[400],
+                '&:hover': {
+                  color: theme.palette.error.main,
+                  backgroundColor: alpha(theme.palette.error.main, 0.1),
+                },
+              }}
+            >
+              <Trash2 size={18} />
+            </IconButton>
+          )}
+        </Box>
       </Box>
 
       <Box
         sx={{
           overflowY: 'auto',
-          maxHeight: 300,
+          minHeight: expanded ? 450 : 150,
+          maxHeight: expanded ? 500 : 300,
+          flex: expanded ? 1 : 'none',
+          transition: 'all 0.3s ease-in-out',
           display: 'flex',
           flexDirection: 'column',
           gap: 1.5,
@@ -218,7 +280,7 @@ export default function AskAIChat({ portfolioData, historicalData }: AskAIChatPr
             >
               <Box
                 sx={{
-                  maxWidth: '85%',
+                  maxWidth: msg.role === 'assistant' && msg.chart ? '95%' : '85%',
                   px: 2,
                   py: 1.5,
                   borderRadius: 2,
@@ -239,6 +301,12 @@ export default function AskAIChat({ portfolioData, historicalData }: AskAIChatPr
                 >
                   {msg.content}
                 </Typography>
+                {msg.role === 'assistant' && msg.chart && (
+                  <ChatChart data={msg.chart} />
+                )}
+                {msg.role === 'assistant' && msg.ctas && msg.ctas.length > 0 && (
+                  <ChatCTAButtons ctas={msg.ctas} onAction={handleCTAAction} />
+                )}
               </Box>
             </Box>
           ))

@@ -5,55 +5,55 @@
   "current": {
     "month": "January",
     "year": 2026,
-    "totalLoans": 1250,
-    "activeLoans": 1210,
-    "principalBalance": 178000000,
-    "unpaidInterest": 1320000,
-    "totalLateCharges": 52000,
+    "totalLoans": 1280,
+    "activeLoans": 1245,
+    "principalBalance": 185500000,
+    "unpaidInterest": 1250000,
+    "totalLateCharges": 45000,
     "cashFlow": {
-      "moneyIn": 2200000,
-      "moneyInChange": 0.5,
-      "moneyOut": 135000,
-      "moneyOutChange": 0.3,
-      "netCashFlow": 2065000
+      "moneyIn": 2450000,
+      "moneyInChange": 12.5,
+      "moneyOut": 125000,
+      "moneyOutChange": -5.2,
+      "netCashFlow": 2325000
     },
     "delinquent": {
-      "total": 95,
-      "percentage": 7.9,
+      "total": 1121,
+      "percentage": 90.0,
       "breakdown": {
-        "thirtyDays": 48,
-        "sixtyDays": 31,
-        "ninetyPlusDays": 16
+        "thirtyDays": 583,
+        "sixtyDays": 336,
+        "ninetyPlusDays": 202
       }
     },
     "trends": {
-      "collections": 0.5,
-      "disbursements": 0.3,
-      "delinquency": 0.1,
-      "newLoans": 12,
-      "paidOff": 11
+      "collections": 12.5,
+      "disbursements": -5.2,
+      "delinquency": -0.8,
+      "newLoans": 15,
+      "paidOff": 8
     },
     "actionItems": [
       {
-        "id": "LN-2024-042",
-        "borrower": "Anderson, Robert",
+        "id": "LN-2024-001",
+        "borrower": "Smith, John & Jane",
         "priority": "High",
-        "amount": 110000,
-        "daysPastDue": 91
+        "amount": 125000,
+        "daysPastDue": 95
       },
       {
-        "id": "LN-2024-055",
-        "borrower": "Martinez, Elena",
-        "priority": "Medium",
-        "amount": 78000,
-        "daysPastDue": 65
+        "id": "LN-2024-015",
+        "borrower": "Johnson, Michael",
+        "priority": "High",
+        "amount": 87500,
+        "daysPastDue": 102
       },
       {
-        "id": "LN-2024-067",
-        "borrower": "Thompson, David",
+        "id": "LN-2024-028",
+        "borrower": "Williams, Sarah",
         "priority": "Medium",
-        "amount": 92000,
-        "daysPastDue": 58
+        "amount": 95000,
+        "daysPastDue": 68
       }
     ]
   },
@@ -61,99 +61,99 @@
     {
       "month": "October",
       "year": 2025,
-      "totalLoans": 1240,
-      "activeLoans": 1200,
-      "principalBalance": 176000000,
-      "unpaidInterest": 1350000,
-      "totalLateCharges": 54000,
+      "totalLoans": 1210,
+      "activeLoans": 1175,
+      "principalBalance": 172000000,
+      "unpaidInterest": 1450000,
+      "totalLateCharges": 62000,
       "cashFlow": {
-        "moneyIn": 2180000,
-        "moneyInChange": -0.2,
-        "moneyOut": 132000,
-        "moneyOutChange": 0.5,
-        "netCashFlow": 2048000
+        "moneyIn": 2050000,
+        "moneyInChange": -2.1,
+        "moneyOut": 145000,
+        "moneyOutChange": 3.5,
+        "netCashFlow": 1905000
       },
       "delinquent": {
-        "total": 96,
-        "percentage": 8.0,
+        "total": 118,
+        "percentage": 10.0,
         "breakdown": {
-          "thirtyDays": 49,
-          "sixtyDays": 31,
-          "ninetyPlusDays": 16
+          "thirtyDays": 62,
+          "sixtyDays": 38,
+          "ninetyPlusDays": 18
         }
       },
       "trends": {
-        "collections": -0.2,
-        "disbursements": 0.5,
-        "delinquency": 0.2,
-        "newLoans": 11,
-        "paidOff": 10
+        "collections": -2.1,
+        "disbursements": 3.5,
+        "delinquency": 1.2,
+        "newLoans": 10,
+        "paidOff": 12
       },
       "actionItems": []
     },
     {
       "month": "November",
       "year": 2025,
-      "totalLoans": 1245,
-      "activeLoans": 1205,
-      "principalBalance": 177000000,
-      "unpaidInterest": 1340000,
-      "totalLateCharges": 53000,
+      "totalLoans": 1235,
+      "activeLoans": 1200,
+      "principalBalance": 178000000,
+      "unpaidInterest": 1380000,
+      "totalLateCharges": 55000,
       "cashFlow": {
-        "moneyIn": 2190000,
-        "moneyInChange": 0.5,
-        "moneyOut": 134000,
-        "moneyOutChange": 1.5,
-        "netCashFlow": 2056000
+        "moneyIn": 2180000,
+        "moneyInChange": 6.3,
+        "moneyOut": 138000,
+        "moneyOutChange": -4.8,
+        "netCashFlow": 2042000
       },
       "delinquent": {
-        "total": 95,
-        "percentage": 7.9,
+        "total": 360,
+        "percentage": 30.0,
         "breakdown": {
-          "thirtyDays": 48,
-          "sixtyDays": 31,
-          "ninetyPlusDays": 16
+          "thirtyDays": 187,
+          "sixtyDays": 108,
+          "ninetyPlusDays": 65
         }
       },
       "trends": {
-        "collections": 0.5,
-        "disbursements": 1.5,
-        "delinquency": -0.1,
+        "collections": 6.3,
+        "disbursements": -4.8,
+        "delinquency": -0.9,
         "newLoans": 12,
-        "paidOff": 11
+        "paidOff": 10
       },
       "actionItems": []
     },
     {
       "month": "December",
       "year": 2025,
-      "totalLoans": 1248,
-      "activeLoans": 1208,
-      "principalBalance": 177500000,
-      "unpaidInterest": 1330000,
-      "totalLateCharges": 52500,
+      "totalLoans": 1260,
+      "activeLoans": 1225,
+      "principalBalance": 182000000,
+      "unpaidInterest": 1300000,
+      "totalLateCharges": 48000,
       "cashFlow": {
-        "moneyIn": 2195000,
-        "moneyInChange": 0.2,
-        "moneyOut": 134500,
-        "moneyOutChange": 0.4,
-        "netCashFlow": 2060500
+        "moneyIn": 2320000,
+        "moneyInChange": 6.4,
+        "moneyOut": 130000,
+        "moneyOutChange": -5.8,
+        "netCashFlow": 2190000
       },
       "delinquent": {
-        "total": 95,
-        "percentage": 7.9,
+        "total": 735,
+        "percentage": 60.0,
         "breakdown": {
-          "thirtyDays": 48,
-          "sixtyDays": 31,
-          "ninetyPlusDays": 16
+          "thirtyDays": 382,
+          "sixtyDays": 221,
+          "ninetyPlusDays": 132
         }
       },
       "trends": {
-        "collections": 0.2,
-        "disbursements": 0.4,
-        "delinquency": 0.0,
-        "newLoans": 12,
-        "paidOff": 11
+        "collections": 6.4,
+        "disbursements": -5.8,
+        "delinquency": -0.5,
+        "newLoans": 14,
+        "paidOff": 9
       },
       "actionItems": []
     }

@@ -29,14 +29,38 @@ import {
 } from '../../types/email';
 import type { ActionItem } from '../../types';
 
+type ActionCategory = 'Checks Due' | 'Pending Billing' | 'Payment Adjustments';
+
+const getCategoryForItem = (item: ActionItem): ActionCategory => {
+  if (item.category === 'Checks Due' || item.category === 'Pending Billing' || item.category === 'Payment Adjustments') {
+    return item.category;
+  }
+  if (item.daysPastDue >= 90) return 'Checks Due';
+  if (item.daysPastDue >= 60) return 'Pending Billing';
+  return 'Payment Adjustments';
+};
+
+const getEmailTypeForCategory = (category: ActionCategory): EmailDraftContext['emailType'] => {
+  switch (category) {
+    case 'Checks Due':
+      return 'checks_due';
+    case 'Pending Billing':
+      return 'pending_billing';
+    case 'Payment Adjustments':
+    default:
+      return 'payment_adjustment';
+  }
+};
+
 function actionItemToContext(item: ActionItem): EmailDraftContext {
+  const category = getCategoryForItem(item);
   return {
     loanId: item.id,
     borrowerName: item.borrower,
     borrowerEmail: item.borrowerEmail,
     amount: item.amount,
     daysPastDue: item.daysPastDue,
-    emailType: 'collection_followup',
+    emailType: getEmailTypeForCategory(category),
   };
 }
 

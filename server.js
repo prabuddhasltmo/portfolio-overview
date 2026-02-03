@@ -678,7 +678,7 @@ let messageIdCounter = 100;
  *                 type: number
  *               emailType:
  *                 type: string
- *                 enum: [collection_followup, check_in, refinance_offer, general]
+ *                 enum: [collection_followup, check_in, refinance_offer, general, checks_due, pending_billing, payment_adjustment]
  *     responses:
  *       200:
  *         description: AI-generated email draft
@@ -696,6 +696,9 @@ app.post('/api/ai/draft-email', async (req, res) => {
     check_in: `You are a professional loan servicer. Draft a brief, friendly check-in email to maintain the borrower relationship. Keep it warm and professional.`,
     refinance_offer: `You are a professional loan servicer. Draft a professional email offering refinancing options. Highlight potential benefits based on good payment history.`,
     general: `You are a professional loan servicer. Draft a professional email regarding the borrower's loan account.`,
+    checks_due: `You are a professional loan servicer. Draft a concise email about a check/disbursement due related to the borrower's loan. Explain what the check is for, any required approvals, and next steps. Keep the tone clear and professional.`,
+    pending_billing: `You are a professional loan servicer. Draft a concise email about pending billing or payoff processing for the borrower's loan. Ask for any missing information and provide a clear next step.`,
+    payment_adjustment: `You are a professional loan servicer. Draft a professional notice about a payment adjustment (e.g., escrow analysis or rate change). Explain the reason, effective date, and the updated payment amount. Offer to discuss questions.`,
   };
 
   const contextInfo = [];
@@ -738,7 +741,7 @@ Return ONLY the JSON object, no markdown or extra text.`;
 
 app.post('/api/ai/draft-message', async (req, res) => {
   const client = getClient();
-  const { loanId, borrowerName, amount, daysPastDue } = req.body;
+  const { loanId, borrowerName, amount, daysPastDue, emailType = 'general' } = req.body;
 
   if (!client) {
     return res.status(500).json({ error: 'OpenAI API key not configured' });
@@ -750,7 +753,17 @@ app.post('/api/ai/draft-message', async (req, res) => {
   if (amount) contextInfo.push(`Outstanding Balance: $${amount.toLocaleString()}`);
   if (daysPastDue) contextInfo.push(`Days Past Due: ${daysPastDue}`);
 
-  const prompt = `You are a professional loan servicer. Draft a SHORT, conversational message for the borrower's portal (2-way messaging). Be brief and friendly—this is a quick message, not a formal letter.
+  const prompts = {
+    collection_followup: `You are a professional loan servicer. Draft a SHORT, conversational payment follow-up message. Be empathetic and offer to discuss payment options.`,
+    check_in: `You are a professional loan servicer. Draft a SHORT, friendly check-in message to maintain the borrower relationship.`,
+    refinance_offer: `You are a professional loan servicer. Draft a SHORT message offering refinancing options and invite the borrower to learn more.`,
+    general: `You are a professional loan servicer. Draft a SHORT, conversational message regarding the borrower's loan account.`,
+    checks_due: `You are a professional loan servicer. Draft a SHORT message about a check/disbursement due. Explain the purpose and next step.`,
+    pending_billing: `You are a professional loan servicer. Draft a SHORT message about pending billing or payoff processing. Ask for any needed information.`,
+    payment_adjustment: `You are a professional loan servicer. Draft a SHORT message about a payment adjustment. Mention the change and invite questions.`,
+  };
+
+  const prompt = `${prompts[emailType] || prompts.general}
 
 Context:
 ${contextInfo.join('\n')}

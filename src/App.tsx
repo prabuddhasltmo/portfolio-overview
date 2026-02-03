@@ -17,7 +17,7 @@ import ReportMockupModal from './components/Dashboard/ReportMockupModal';
 import { SendMessageModal } from './components/Email';
 import { portfolioData as fallbackData, historicalPortfolioData as fallbackHistorical } from './data/mockData';
 import { fetchPortfolioData, fetchScenarios, switchScenario, type Scenario, type PortfolioResponse } from './services/openai';
-import type { PortfolioData } from './types';
+import type { PortfolioData, ActionItem } from './types';
 import type { EmailDraftContext } from './types/email';
 import type { ReportMockupType, ReportMockupContext } from './types/reportMockup';
 import portfolioRecapTheme from './portfolioRecapTheme';
@@ -32,6 +32,8 @@ function App() {
   const [selectedPeriodKey, setSelectedPeriodKey] = useState<string | null>(null);
   const [sendMessageContext, setSendMessageContext] = useState<EmailDraftContext | null>(null);
   const [sendMessageOpen, setSendMessageOpen] = useState(false);
+  const [sendMessageBorrowers, setSendMessageBorrowers] = useState<ActionItem[] | null>(null);
+  const [sendMessageEmailTypeOverride, setSendMessageEmailTypeOverride] = useState<EmailDraftContext['emailType'] | null>(null);
   const [reportMockupOpen, setReportMockupOpen] = useState(false);
   const [reportMockupType, setReportMockupType] = useState<ReportMockupType>('late_notices');
   const [reportMockupContext, setReportMockupContext] = useState<ReportMockupContext | null>(null);
@@ -99,14 +101,39 @@ function App() {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  const openSendMessage = (context?: EmailDraftContext | null) => {
+  const openSendMessage = (
+    context?: EmailDraftContext | null,
+    options?: { borrowers?: ActionItem[] | null; emailTypeOverride?: EmailDraftContext['emailType'] | null }
+  ) => {
     setSendMessageContext(context ?? null);
+    setSendMessageBorrowers(options?.borrowers ?? null);
+    setSendMessageEmailTypeOverride(options?.emailTypeOverride ?? null);
     setSendMessageOpen(true);
   };
 
   const closeSendMessage = () => {
     setSendMessageOpen(false);
     setSendMessageContext(null);
+    setSendMessageBorrowers(null);
+    setSendMessageEmailTypeOverride(null);
+  };
+
+  const buildLateNoticeContext = (item: ActionItem): EmailDraftContext => ({
+    loanId: item.id,
+    borrowerName: item.borrower,
+    borrowerEmail: item.borrowerEmail,
+    amount: item.amount,
+    daysPastDue: item.daysPastDue,
+    emailType: 'collection_followup',
+  });
+
+  const openLateNoticeModal = () => {
+    const delinquentItems = (currentData.actionItems ?? []).filter((item) => (item.daysPastDue ?? 0) > 0);
+    const initial = delinquentItems.length > 0 ? buildLateNoticeContext(delinquentItems[0]) : null;
+    openSendMessage(initial, {
+      borrowers: delinquentItems,
+      emailTypeOverride: 'collection_followup',
+    });
   };
 
   const handleGenerateReport = (reportType: ReportMockupType, selectedContexts: ReportMockupContext[]) => {
@@ -201,6 +228,7 @@ function App() {
                       historicalData={historicalData}
                       refreshTrigger={refreshTrigger}
                       scenarioSentiment={portfolio?.sentiment}
+                      onOpenLateNotices={openLateNoticeModal}
                     />
                   ) : (
                     <NoDataForPeriodCard />
@@ -281,8 +309,9 @@ function App() {
       <SendMessageModal
         open={sendMessageOpen}
         onClose={closeSendMessage}
-        borrowers={currentData.actionItems ?? []}
+        borrowers={sendMessageBorrowers ?? currentData.actionItems ?? []}
         initialContext={sendMessageContext}
+        forcedEmailType={sendMessageEmailTypeOverride ?? undefined}
       />
       {reportMockupContext && (
         <ReportMockupModal

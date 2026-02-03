@@ -31,6 +31,7 @@ export interface ActionItem {
   borrower: string;
   borrowerEmail?: string;
   priority: 'High' | 'Medium' | 'Low';
+  category?: 'Checks Due' | 'Pending Billing' | 'Payment Adjustments';
   amount: number;
   daysPastDue: number;
 }

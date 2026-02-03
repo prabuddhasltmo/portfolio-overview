@@ -15,7 +15,14 @@ export interface EmailDraftContext {
   borrowerEmail?: string;
   amount: number;
   daysPastDue?: number;
-  emailType: 'collection_followup' | 'check_in' | 'refinance_offer' | 'general';
+  emailType:
+    | 'collection_followup'
+    | 'check_in'
+    | 'refinance_offer'
+    | 'general'
+    | 'checks_due'
+    | 'pending_billing'
+    | 'payment_adjustment';
 }
 
 export interface EmailFormData {
@@ -46,4 +53,3 @@ export interface AIEmailDraftResponse {
   subject: string;
   body: string;
 }
-

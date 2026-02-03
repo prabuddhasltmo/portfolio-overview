@@ -38,6 +38,7 @@
         "id": "LN-2024-001",
         "borrower": "Smith, John & Jane",
         "priority": "High",
+        "category": "Checks Due",
         "amount": 125000,
         "daysPastDue": 95
       },
@@ -45,6 +46,7 @@
         "id": "LN-2024-015",
         "borrower": "Johnson, Michael",
         "priority": "High",
+        "category": "Pending Billing",
         "amount": 87500,
         "daysPastDue": 102
       },
@@ -52,6 +54,7 @@
         "id": "LN-2024-028",
         "borrower": "Williams, Sarah",
         "priority": "Medium",
+        "category": "Payment Adjustments",
         "amount": 95000,
         "daysPastDue": 68
       }

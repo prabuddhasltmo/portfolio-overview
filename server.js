@@ -6,7 +6,9 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import OpenAI from 'openai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync } from 'fs';
+import { loadScenario, listScenarios } from './dist-tools/lib/scenarioStore.js';
+import { McpChatAgent } from './dist-tools/mcp/chatAgent.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,31 +22,17 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = join(__dirname, 'data');
 let currentScenario = 'trending-up';
 
-const loadScenario = (name) => {
-  const filePath = join(DATA_DIR, `${name}.json`);
-  const content = readFileSync(filePath, 'utf-8');
-  return JSON.parse(content);
-};
-
-const listScenarios = () => {
-  const files = readdirSync(DATA_DIR).filter(f => f.endsWith('.json'));
-  return files.map(f => {
-    const name = f.replace('.json', '');
-    const data = loadScenario(name);
-    return {
-      id: name,
-      name: data.name,
-      description: data.description,
-      active: name === currentScenario,
-    };
-  });
-};
-
 const getClient = () => {
   const apiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
   if (!apiKey) return null;
   return new OpenAI({ apiKey });
 };
+
+const chatAgent = new McpChatAgent({
+  dataDir: DATA_DIR,
+  getActiveScenarioId: () => currentScenario,
+  openaiFactory: getClient,
+});
 
 const swaggerOptions = {
   definition: {
@@ -328,113 +316,26 @@ Return ONLY the JSON array, no other text.`;
  *         description: Server error
  */
 app.post('/api/ai/chat', async (req, res) => {
-  const client = getClient();
   const { question, portfolioData, historicalData, conversationHistory = [] } = req.body;
 
-  if (!client) {
-    return res.status(500).json({ error: 'OpenAI API key not configured' });
-  }
-
-  const historicalSummary = historicalData?.map(h => `
-${h.month} ${h.year}:
-- Active Loans: ${h.activeLoans}
-- Principal Balance: $${h.principalBalance?.toLocaleString()}
-- Collections: $${h.cashFlow?.moneyIn?.toLocaleString()} (${h.cashFlow?.moneyInChange > 0 ? '+' : ''}${h.cashFlow?.moneyInChange}%)
-- Disbursements (Money Out): $${h.cashFlow?.moneyOut?.toLocaleString()} (${h.cashFlow?.moneyOutChange != null ? (h.cashFlow.moneyOutChange > 0 ? '+' : '') + h.cashFlow.moneyOutChange + '%' : 'N/A'})
-- Delinquency Rate: ${h.delinquent?.percentage}%`).join('\n') || 'No historical data available';
-
-  const systemPrompt = `You are a financial analyst assistant for a mortgage servicing company. You have access to the following portfolio data:
-
-CURRENT PORTFOLIO DATA (${portfolioData.month} ${portfolioData.year}):
-- Total Loans: ${portfolioData.totalLoans}
-- Active Loans: ${portfolioData.activeLoans}
-- Principal Balance: $${portfolioData.principalBalance?.toLocaleString()}
-- Unpaid Interest: $${portfolioData.unpaidInterest?.toLocaleString()}
-- Total Late Charges: $${portfolioData.totalLateCharges?.toLocaleString()}
-- Money In (Collections): $${portfolioData.cashFlow?.moneyIn?.toLocaleString()} (${portfolioData.cashFlow?.moneyInChange > 0 ? '+' : ''}${portfolioData.cashFlow?.moneyInChange}% vs last month)
-- Money Out (Disbursements): $${portfolioData.cashFlow?.moneyOut?.toLocaleString()} (${portfolioData.cashFlow?.moneyOutChange != null ? (portfolioData.cashFlow.moneyOutChange > 0 ? '+' : '') + portfolioData.cashFlow.moneyOutChange + '%' : 'N/A'} vs last month)
-- Net Cash Flow: $${portfolioData.cashFlow?.netCashFlow?.toLocaleString()}
-- Delinquent Loans: ${portfolioData.delinquent?.total} (${portfolioData.delinquent?.percentage}%)
-- 30 Days Past Due: ${portfolioData.delinquent?.breakdown?.thirtyDays}
-- 60 Days Past Due: ${portfolioData.delinquent?.breakdown?.sixtyDays}
-- 90+ Days Past Due: ${portfolioData.delinquent?.breakdown?.ninetyPlusDays}
-- Collections Trend: ${portfolioData.trends?.collections > 0 ? '+' : ''}${portfolioData.trends?.collections}%
-- Disbursements Trend: ${portfolioData.trends?.disbursements != null ? (portfolioData.trends.disbursements > 0 ? '+' : '') + portfolioData.trends.disbursements + '%' : 'N/A'}
-- Delinquency Trend: ${portfolioData.trends?.delinquency > 0 ? '+' : ''}${portfolioData.trends?.delinquency}%
-- New Loans This Month: ${portfolioData.trends?.newLoans}
-- Loans Paid Off: ${portfolioData.trends?.paidOff}
-
-ACTION ITEMS (specific delinquent loans to follow up—use these when the user asks who to message or which borrowers are delinquent):
-${(portfolioData.actionItems && portfolioData.actionItems.length > 0)
-  ? portfolioData.actionItems.map(a => `- Loan ${a.id}: ${a.borrower}, $${(a.amount || 0).toLocaleString()}, ${a.daysPastDue} days past due, priority ${a.priority}`).join('\n')
-  : 'None listed.'}
-
-HISTORICAL DATA (Past 3 Months):
-${historicalSummary}
-
-Answer questions factually and cite specific numbers from the data. When asked who to message or which borrowers are delinquent, list the specific loans and borrowers from ACTION ITEMS above. Be concise but thorough.
-
-CHART INSTRUCTIONS:
-When the user asks for a graph, chart, visualization, or comparison across time periods, include a "chart" object in your response.
-
-SINGLE METRIC (one line of bars or one trend):
-- type: "bar", "line", or "area"
-- title, xAxisLabel, yAxisLabel: strings
-- data: Array of { label: "Month YYYY", value: number } - one value per period
-
-COMPARISON (e.g. "money in vs money out", "collections vs disbursements", "X and Y"):
-- type: "bar"
-- title, xAxisLabel, yAxisLabel: strings
-- data: Array of objects with label PLUS one key per series, e.g. { label: "October 2025", moneyIn: 2050000, moneyOut: 145000 }
-- series: Array of { dataKey: "moneyIn", name: "Money In" }, { dataKey: "moneyOut", name: "Money Out" }
-Use exact dataKey strings that match the keys in each data object. Populate from historical data: Collections = cashFlow.moneyIn, Disbursements = cashFlow.moneyOut for each month.
-
-CTA INSTRUCTIONS:
-When your answer relates to actionable items, include a "ctas" array with suggested actions. Each CTA should have:
-- label: Button text (e.g., "Generate Late Notices")
-- icon: One of "alert", "mail", "send", "file"
-- action: An object with type and optional context
-
-Include CTAs for these topics:
-- Delinquency/lateness/past due discussions → { type: "late_notices", label: "Generate Late Notices", icon: "alert", action: { type: "late_notices" } }
-- Discussing specific borrowers or collections → { type: "send_message", label: "Message Borrower", icon: "send", action: { type: "send_message", borrowerId: "...", borrowerEmail: "..." } }
-- Reports/statements requests → { type: "view_report", label: "View Report", icon: "file", action: { type: "view_report", reportType: "late_notices" or "borrower_statement" or "escrow_analysis" } }
-
-Be proactive about suggesting relevant CTAs based on the conversation context.`;
-
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
-    { role: 'user', content: `${question}
-
-After answering, suggest 2-3 follow-up questions the user might want to ask. Format your response as JSON with these fields:
-- "answer": Your detailed answer to the question
-- "suggestions": An array of 2-3 suggested follow-up questions
-- "chart": (optional) If a chart/graph was requested, include the chart object as described in CHART INSTRUCTIONS. Set to null if no chart is needed.
-- "ctas": (optional) An array of contextual action buttons as described in CTA INSTRUCTIONS. Set to [] if no actions are relevant.
-
-Return ONLY the JSON object, no other text or markdown.` }
-  ];
-
   try {
-    const response = await client.chat.completions.create({
-      model: 'gpt-4o',
-      max_tokens: 1000,
-      messages,
+    console.info('[API /api/ai/chat] question:', question);
+    const result = await chatAgent.chat({
+      question,
+      portfolioData,
+      historicalData,
+      conversationHistory,
+      scenarioId: currentScenario,
+      toolIds: ['get_scenario', 'get_action_items'],
     });
-
-    let content = response.choices[0]?.message?.content || '';
-    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-    const parsed = JSON.parse(content);
-    res.json({
-      answer: parsed.answer || '',
-      suggestions: parsed.suggestions || [],
-      chart: parsed.chart || null,
-      ctas: parsed.ctas || [],
+    console.info('[API /api/ai/chat] response summary:', {
+      ctas: result.ctas?.map(cta => cta.action.type),
+      suggestions: result.suggestions?.length,
     });
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ error: message });
   }
 });
 
@@ -570,7 +471,7 @@ app.get('/api/health', (_req, res) => {
  *         description: List of scenarios
  */
 app.get('/api/scenarios', (_req, res) => {
-  res.json({ scenarios: listScenarios() });
+  res.json({ scenarios: listScenarios({ activeScenarioId: currentScenario }) });
 });
 
 /**

@@ -35,28 +35,28 @@
     },
     "actionItems": [
       {
-        "id": "LN-2024-001",
-        "borrower": "Smith, John & Jane",
+        "id": "LN-2026-079",
+        "borrower": "Bennett, Charles",
+        "priority": "Critical",
+        "category": "Collections Hold",
+        "amount": 158000,
+        "daysPastDue": 128
+      },
+      {
+        "id": "LN-2026-084",
+        "borrower": "Riley, Monique",
+        "priority": "High",
+        "category": "Legal Review",
+        "amount": 132500,
+        "daysPastDue": 117
+      },
+      {
+        "id": "LN-2026-088",
+        "borrower": "Patel, Rohan",
         "priority": "High",
         "category": "Checks Due",
-        "amount": 125000,
-        "daysPastDue": 95
-      },
-      {
-        "id": "LN-2024-015",
-        "borrower": "Johnson, Michael",
-        "priority": "High",
-        "category": "Pending Billing",
-        "amount": 87500,
-        "daysPastDue": 102
-      },
-      {
-        "id": "LN-2024-028",
-        "borrower": "Williams, Sarah",
-        "priority": "Medium",
-        "category": "Payment Adjustments",
-        "amount": 95000,
-        "daysPastDue": 68
+        "amount": 118750,
+        "daysPastDue": 104
       }
     ]
   },

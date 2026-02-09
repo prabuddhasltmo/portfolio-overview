@@ -1,0 +1,19 @@
+{
+  "name": "Alpha Scenario",
+  "description": "Alpha description",
+  "sentiment": "good",
+  "current": {
+    "month": "January",
+    "year": 2024,
+    "actionItems": [
+      {
+        "id": "LN-1",
+        "borrower": "Test Borrower",
+        "priority": "High",
+        "amount": 1000,
+        "daysPastDue": 15
+      }
+    ]
+  },
+  "historical": []
+}

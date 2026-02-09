@@ -192,6 +192,7 @@ function App() {
             historicalData={historicalData}
             refreshTrigger={refreshTrigger}
             scenarioSentiment={portfolio?.sentiment}
+            onOpenLateNotices={openLateNoticeModal}
           />
         ) : (
           <NoDataForPeriodCard key={id} />
@@ -362,82 +363,7 @@ function App() {
                 </CardBox>
               ) : (
                 <>
-                  {hasDataForSelectedPeriod ? (
-                    <AISummary
-                      data={currentData}
-                      historicalData={historicalData}
-                      refreshTrigger={refreshTrigger}
-                      scenarioSentiment={portfolio?.sentiment}
-                      onOpenLateNotices={openLateNoticeModal}
-                    />
-                  ) : (
-                    <NoDataForPeriodCard />
-                  )}
-
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
-                      gap: 1.5,
-                    }}
-                  >
-                    {hasDataForSelectedPeriod ? (
-                      <CashFlow data={currentData.cashFlow} />
-                    ) : (
-                      <NoDataForPeriodCard />
-                    )}
-                    {hasDataForSelectedPeriod ? (
-                      <DelinquentLoans
-                        data={currentData.delinquent}
-                        activeLoans={currentData.activeLoans}
-                      />
-                    ) : (
-                      <NoDataForPeriodCard />
-                    )}
-                  </Box>
-
-                  {hasDataForSelectedPeriod ? (
-                    <PortfolioHealth data={currentData} />
-                  ) : (
-                    <NoDataForPeriodCard />
-                  )}
-
-                  {hasDataForSelectedPeriod ? (
-                    <MonthOverMonthTrends data={currentData.trends} />
-                  ) : (
-                    <NoDataForPeriodCard />
-                  )}
-
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
-                      gap: 1.5,
-                    }}
-                  >
-                    {hasDataForSelectedPeriod ? (
-                      <AIInsights
-                        data={currentData}
-                        refreshTrigger={refreshTrigger}
-                      />
-                    ) : (
-                      <NoDataForPeriodCard />
-                    )}
-                    <ActionItems
-                      items={currentData.actionItems}
-                      onMessageClick={openSendMessage}
-                      onReportGenerate={handleGenerateReport}
-                    />
-                  </Box>
-
-                  <AskAIChat
-                    portfolioData={currentData}
-                    historicalData={historicalData}
-                    onOpenLateNotices={openLateNoticesFromChat}
-                    onOpenSendMessage={openSendMessage}
-                    onOpenReport={openReportFromChat}
-                  />
-
+                  {buildDashboardLayout()}
                   {lastUpdated && <GeneratedTimestamp timestamp={lastUpdated} />}
                 </>
               )}

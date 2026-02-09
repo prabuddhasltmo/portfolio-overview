@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Chip, IconButton, Tooltip, Skeleton } from '@mui/material';
+import { Box, Typography, Chip, IconButton, Tooltip, Skeleton, Button } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
@@ -14,11 +14,13 @@ interface AISummaryProps {
   historicalData: PortfolioData[];
   refreshTrigger?: number;
   scenarioSentiment?: Sentiment;
+  onOpenLateNotices?: () => void;
 }
 
-export default function AISummary({ data, historicalData, refreshTrigger, scenarioSentiment }: AISummaryProps) {
+export default function AISummary({ data, historicalData, refreshTrigger, scenarioSentiment, onOpenLateNotices }: AISummaryProps) {
   const [summary, setSummary] = useState<string>(mockAISummary);
   const [keyTakeaway, setKeyTakeaway] = useState<string>(mockKeyTakeaway);
+  const [aiSentiment, setAiSentiment] = useState<Sentiment>('neutral');
   const [loading, setLoading] = useState(false);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
   const theme = useTheme();
@@ -44,11 +46,13 @@ export default function AISummary({ data, historicalData, refreshTrigger, scenar
         const result = await generateAISummary(data, historicalData);
         setSummary(result.summary);
         setKeyTakeaway(result.keyTakeaway);
+        setAiSentiment(result.sentiment);
         setIsAIGenerated(result.summary !== mockAISummary);
       } catch (error) {
         console.error('Error fetching AI summary:', error);
         setSummary(mockAISummary);
         setKeyTakeaway(mockKeyTakeaway);
+        setAiSentiment('neutral');
         setIsAIGenerated(false);
       } finally {
         setLoading(false);
@@ -64,6 +68,7 @@ export default function AISummary({ data, historicalData, refreshTrigger, scenar
       const result = await generateAISummary(data, historicalData);
       setSummary(result.summary);
       setKeyTakeaway(result.keyTakeaway);
+      setAiSentiment(result.sentiment);
       setIsAIGenerated(result.summary !== mockAISummary);
     } catch (error) {
       console.error('Error refreshing AI summary:', error);
@@ -71,6 +76,9 @@ export default function AISummary({ data, historicalData, refreshTrigger, scenar
       setLoading(false);
     }
   };
+
+  const showLateNoticeCTA = aiSentiment === 'bad';
+  const lateNoticeCount = data.actionItems?.filter((item) => (item.daysPastDue ?? 0) > 0).length ?? 0;
 
   return (
     <CardBox
@@ -188,30 +196,57 @@ export default function AISummary({ data, historicalData, refreshTrigger, scenar
                 mt: '1px',
               }}
             />
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: '0.6875rem',
-                  lineHeight: '14px',
-                  color: neutral?.[500],
-                  fontWeight: 500,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  mb: 0.5,
-                }}
-              >
-                Key Takeaway
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: '0.875rem',
-                  lineHeight: 1.5,
-                  color: neutral?.[800],
-                  fontWeight: 400,
-                }}
-              >
-                {keyTakeaway}
-              </Typography>
+            <Box
+              sx={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 2,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  sx={{
+                    fontSize: '0.6875rem',
+                    lineHeight: '14px',
+                    color: neutral?.[500],
+                    fontWeight: 500,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    mb: 0.5,
+                  }}
+                >
+                  Key Takeaway
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: '0.875rem',
+                    lineHeight: 1.5,
+                    color: neutral?.[800],
+                    fontWeight: 400,
+                  }}
+                >
+                  {keyTakeaway}
+                </Typography>
+              </Box>
+              {showLateNoticeCTA && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={onOpenLateNotices}
+                  disabled={!onOpenLateNotices}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    backgroundColor: theme.palette.error.main,
+                    '&:hover': { backgroundColor: theme.palette.error.dark },
+                  }}
+                >
+                  Send late notices{lateNoticeCount > 0 ? ` (${lateNoticeCount})` : ''}
+                </Button>
+              )}
             </Box>
           </Box>
         )}

@@ -52,7 +52,7 @@ const getEmailTypeForCategory = (category: ActionCategory): EmailDraftContext['e
   }
 };
 
-function actionItemToContext(item: ActionItem): EmailDraftContext {
+function actionItemToContext(item: ActionItem, overrideEmailType?: EmailDraftContext['emailType']): EmailDraftContext {
   const category = getCategoryForItem(item);
   return {
     loanId: item.id,
@@ -60,7 +60,7 @@ function actionItemToContext(item: ActionItem): EmailDraftContext {
     borrowerEmail: item.borrowerEmail,
     amount: item.amount,
     daysPastDue: item.daysPastDue,
-    emailType: getEmailTypeForCategory(category),
+    emailType: overrideEmailType ?? getEmailTypeForCategory(category),
   };
 }
 
@@ -69,6 +69,7 @@ interface SendMessageModalProps {
   onClose: () => void;
   borrowers: ActionItem[];
   initialContext?: EmailDraftContext | null;
+  forcedEmailType?: EmailDraftContext['emailType'];
   onSuccess?: () => void;
 }
 
@@ -77,6 +78,7 @@ export default function SendMessageModal({
   onClose,
   borrowers,
   initialContext = null,
+  forcedEmailType,
   onSuccess,
 }: SendMessageModalProps) {
   const theme = useTheme();
@@ -102,7 +104,7 @@ export default function SendMessageModal({
 
   const safeBorrowers = borrowers ?? [];
   const selectedBorrower = safeBorrowers.find((b) => b.id === selectedBorrowerId) ?? null;
-  const context: EmailDraftContext | null = selectedBorrower ? actionItemToContext(selectedBorrower) : null;
+  const context: EmailDraftContext | null = selectedBorrower ? actionItemToContext(selectedBorrower, forcedEmailType) : null;
 
   const generateDraft = useCallback(async (ctx: EmailDraftContext) => {
     setLoading(true);
@@ -145,7 +147,7 @@ export default function SendMessageModal({
             ...prev,
             to: { name: match.borrower, email: match.borrowerEmail ?? '' },
           }));
-          generateDraft(actionItemToContext(match));
+          generateDraft(actionItemToContext(match, forcedEmailType));
         } else {
           setSelectedBorrowerId('');
         }
@@ -164,7 +166,7 @@ export default function SendMessageModal({
         ...prev,
         to: { name: item.borrower, email: item.borrowerEmail ?? '' },
       }));
-      generateDraft(actionItemToContext(item));
+      generateDraft(actionItemToContext(item, forcedEmailType));
     } else {
       setFormData((prev) => ({ ...prev, to: { name: '', email: '' }, subject: '', body: '' }));
     }

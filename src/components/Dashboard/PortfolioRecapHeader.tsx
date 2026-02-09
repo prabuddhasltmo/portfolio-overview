@@ -1,10 +1,24 @@
 import { useState } from 'react';
-import { Box, Typography, FormControl, Select, MenuItem, IconButton, Tooltip, Button } from '@mui/material';
+import {
+  Box,
+  Typography,
+  FormControl,
+  Select,
+  MenuItem,
+  IconButton,
+  Tooltip,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+} from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import InsightsIcon from '@mui/icons-material/Insights';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ScienceIcon from '@mui/icons-material/Science';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { FileText } from 'lucide-react';
 import type { Scenario } from '../../services/openai';
 import type { PortfolioData } from '../../types';
@@ -28,6 +42,7 @@ interface PortfolioRecapHeaderProps {
   loading?: boolean;
   portfolioData?: PortfolioData;
   historicalData?: PortfolioData[];
+  onCustomize?: () => void;
 }
 
 function getAvailableYears(periods: PeriodOption[]): number[] {
@@ -47,8 +62,10 @@ export default function PortfolioRecapHeader({
   loading = false,
   portfolioData,
   historicalData = [],
+  onCustomize,
 }: PortfolioRecapHeaderProps) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const availableYears = getAvailableYears(periods);
   const displayMonth = MONTHS.includes(month as (typeof MONTHS)[number]) ? month : MONTHS[0];
   const displayYear = availableYears.includes(year) ? year : availableYears[0] ?? year;
@@ -245,29 +262,85 @@ export default function PortfolioRecapHeader({
           </span>
         </Tooltip>
 
-        {portfolioData && (
-          <Button
-            variant="outlined"
-            startIcon={<FileText size={16} />}
-            onClick={() => setReportModalOpen(true)}
-            disabled={loading}
-            sx={{
-              borderColor: theme.palette.primary.main,
-              color: theme.palette.primary.main,
-              textTransform: 'none',
-              fontWeight: 500,
-              fontSize: '13px',
-              px: 2,
-              py: 0.75,
-              '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                borderColor: theme.palette.primary.main,
+        <IconButton
+          onClick={(e) => setMenuAnchor(e.currentTarget)}
+          sx={{
+            color: neutral?.[600],
+            '&:hover': { backgroundColor: neutral?.[100] },
+          }}
+          size="small"
+        >
+          <MoreVertIcon sx={{ fontSize: '20px' }} />
+        </IconButton>
+
+        <Menu
+          anchorEl={menuAnchor}
+          open={Boolean(menuAnchor)}
+          onClose={() => setMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          slotProps={{
+            paper: {
+              elevation: 0,
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.12))',
+                mt: 0.5,
+                borderRadius: '10px',
+                border: `1px solid ${neutral?.[200]}`,
+                minWidth: 200,
               },
-            }}
-          >
-            View Report
-          </Button>
-        )}
+            },
+          }}
+        >
+          {portfolioData && (
+            <MenuItem
+              onClick={() => {
+                setMenuAnchor(null);
+                setReportModalOpen(true);
+              }}
+              sx={{
+                py: 1.25,
+                px: 2,
+                mx: 1,
+                borderRadius: '6px',
+                '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.08) },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 32, color: neutral?.[600] }}>
+                <FileText size={18} />
+              </ListItemIcon>
+              <ListItemText
+                primary="View Report"
+                primaryTypographyProps={{ fontSize: '14px', fontWeight: 500, color: neutral?.[800] }}
+              />
+            </MenuItem>
+          )}
+          {portfolioData && onCustomize && <Divider sx={{ my: 0.5 }} />}
+          {onCustomize && (
+            <MenuItem
+              onClick={() => {
+                setMenuAnchor(null);
+                onCustomize();
+              }}
+              sx={{
+                py: 1.25,
+                px: 2,
+                mx: 1,
+                borderRadius: '6px',
+                '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.08) },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 32, color: neutral?.[600] }}>
+                <SettingsIcon sx={{ fontSize: 18 }} />
+              </ListItemIcon>
+              <ListItemText
+                primary="Customize Dashboard"
+                primaryTypographyProps={{ fontSize: '14px', fontWeight: 500, color: neutral?.[800] }}
+              />
+            </MenuItem>
+          )}
+        </Menu>
       </Box>
 
       {portfolioData && (

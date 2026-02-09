@@ -14,12 +14,15 @@ import ActionItems from './components/Dashboard/ActionItems';
 import CardBox from './components/Dashboard/CardBox';
 import NoDataForPeriodCard from './components/Dashboard/NoDataForPeriodCard';
 import ReportMockupModal from './components/Dashboard/ReportMockupModal';
+import CustomizeDashboardModal from './components/Dashboard/CustomizeDashboardModal';
 import { SendMessageModal } from './components/Email';
 import { portfolioData as fallbackData, historicalPortfolioData as fallbackHistorical } from './data/mockData';
 import { fetchPortfolioData, fetchScenarios, switchScenario, type Scenario, type PortfolioResponse } from './services/openai';
 import type { PortfolioData } from './types';
 import type { EmailDraftContext } from './types/email';
 import type { ReportMockupType, ReportMockupContext } from './types/reportMockup';
+import type { DashboardCardConfig } from './types/dashboardConfig';
+import { loadDashboardConfig, saveDashboardConfig } from './types/dashboardConfig';
 import portfolioRecapTheme from './portfolioRecapTheme';
 import { periodKey, parsePeriodKey } from './constants/periods';
 
@@ -35,6 +38,8 @@ function App() {
   const [reportMockupOpen, setReportMockupOpen] = useState(false);
   const [reportMockupType, setReportMockupType] = useState<ReportMockupType>('late_notices');
   const [reportMockupContext, setReportMockupContext] = useState<ReportMockupContext | null>(null);
+  const [dashboardCards, setDashboardCards] = useState<DashboardCardConfig[]>(loadDashboardConfig);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const rawCurrent: PortfolioData = portfolio?.current || fallbackData;
   const rawHistorical: PortfolioData[] = portfolio?.historical || fallbackHistorical;
@@ -137,6 +142,140 @@ function App() {
     setReportMockupContext(null);
   };
 
+  const handleSaveDashboardConfig = (cards: DashboardCardConfig[]) => {
+    setDashboardCards(cards);
+    saveDashboardConfig(cards);
+  };
+
+  const isCardVisible = (id: string) =>
+    dashboardCards.find((c) => c.id === id)?.visible ?? true;
+
+  /** Build an ordered list of visible card IDs. */
+  const visibleCardIds = dashboardCards.filter((c) => c.visible).map((c) => c.id);
+
+  /** Render a single card by ID. Returns null if the card is hidden. */
+  const renderCard = (id: string): React.ReactNode => {
+    if (!isCardVisible(id)) return null;
+    switch (id) {
+      case 'ai-summary':
+        return hasDataForSelectedPeriod ? (
+          <AISummary
+            key={id}
+            data={currentData}
+            historicalData={historicalData}
+            refreshTrigger={refreshTrigger}
+            scenarioSentiment={portfolio?.sentiment}
+          />
+        ) : (
+          <NoDataForPeriodCard key={id} />
+        );
+      case 'cash-flow':
+        return hasDataForSelectedPeriod ? (
+          <CashFlow key={id} data={currentData.cashFlow} />
+        ) : (
+          <NoDataForPeriodCard key={id} />
+        );
+      case 'delinquent-loans':
+        return hasDataForSelectedPeriod ? (
+          <DelinquentLoans
+            key={id}
+            data={currentData.delinquent}
+            activeLoans={currentData.activeLoans}
+          />
+        ) : (
+          <NoDataForPeriodCard key={id} />
+        );
+      case 'portfolio-health':
+        return hasDataForSelectedPeriod ? (
+          <PortfolioHealth key={id} data={currentData} />
+        ) : (
+          <NoDataForPeriodCard key={id} />
+        );
+      case 'month-trends':
+        return hasDataForSelectedPeriod ? (
+          <MonthOverMonthTrends key={id} data={currentData.trends} />
+        ) : (
+          <NoDataForPeriodCard key={id} />
+        );
+      case 'ai-insights':
+        return hasDataForSelectedPeriod ? (
+          <AIInsights
+            key={id}
+            data={currentData}
+            refreshTrigger={refreshTrigger}
+          />
+        ) : (
+          <NoDataForPeriodCard key={id} />
+        );
+      case 'action-items':
+        return (
+          <ActionItems
+            key={id}
+            items={currentData.actionItems}
+            onMessageClick={openSendMessage}
+            onReportGenerate={handleGenerateReport}
+          />
+        );
+      case 'ask-ai':
+        return (
+          <AskAIChat
+            key={id}
+            portfolioData={currentData}
+            historicalData={historicalData}
+            onOpenLateNotices={openLateNoticesFromChat}
+            onOpenSendMessage={openSendMessage}
+            onOpenReport={openReportFromChat}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  /**
+   * Walk through the ordered visible cards and group consecutive half-width
+   * cards into 2-column grids, while full-width cards render standalone.
+   */
+  const buildDashboardLayout = (): React.ReactNode[] => {
+    const nodes: React.ReactNode[] = [];
+    let i = 0;
+    while (i < visibleCardIds.length) {
+      const id = visibleCardIds[i];
+      const cfg = dashboardCards.find((c) => c.id === id);
+      const isHalf = cfg?.halfWidth ?? false;
+
+      if (isHalf) {
+        // Peek ahead for the next visible half-width card
+        const nextId = visibleCardIds[i + 1];
+        const nextCfg = nextId ? dashboardCards.find((c) => c.id === nextId) : undefined;
+        if (nextCfg?.halfWidth) {
+          nodes.push(
+            <Box
+              key={`grid-${id}-${nextId}`}
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+                gap: 1.5,
+              }}
+            >
+              {renderCard(id)}
+              {renderCard(nextId)}
+            </Box>,
+          );
+          i += 2;
+        } else {
+          // Solo half-width card — still render it full-width
+          nodes.push(renderCard(id));
+          i += 1;
+        }
+      } else {
+        nodes.push(renderCard(id));
+        i += 1;
+      }
+    }
+    return nodes;
+  };
+
   return (
     <ThemeProvider theme={portfolioRecapTheme}>
       <CssBaseline />
@@ -178,6 +317,7 @@ function App() {
                 loading={loading}
                 portfolioData={currentData}
                 historicalData={historicalData}
+                onCustomize={() => setCustomizeOpen(true)}
               />
 
               {loading ? (
@@ -195,81 +335,7 @@ function App() {
                 </CardBox>
               ) : (
                 <>
-                  {hasDataForSelectedPeriod ? (
-                    <AISummary
-                      data={currentData}
-                      historicalData={historicalData}
-                      refreshTrigger={refreshTrigger}
-                      scenarioSentiment={portfolio?.sentiment}
-                    />
-                  ) : (
-                    <NoDataForPeriodCard />
-                  )}
-
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
-                      gap: 1.5,
-                    }}
-                  >
-                    {hasDataForSelectedPeriod ? (
-                      <CashFlow data={currentData.cashFlow} />
-                    ) : (
-                      <NoDataForPeriodCard />
-                    )}
-                    {hasDataForSelectedPeriod ? (
-                      <DelinquentLoans
-                        data={currentData.delinquent}
-                        activeLoans={currentData.activeLoans}
-                      />
-                    ) : (
-                      <NoDataForPeriodCard />
-                    )}
-                  </Box>
-
-                  {hasDataForSelectedPeriod ? (
-                    <PortfolioHealth data={currentData} />
-                  ) : (
-                    <NoDataForPeriodCard />
-                  )}
-
-                  {hasDataForSelectedPeriod ? (
-                    <MonthOverMonthTrends data={currentData.trends} />
-                  ) : (
-                    <NoDataForPeriodCard />
-                  )}
-
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
-                      gap: 1.5,
-                    }}
-                  >
-                    {hasDataForSelectedPeriod ? (
-                      <AIInsights
-                        data={currentData}
-                        refreshTrigger={refreshTrigger}
-                      />
-                    ) : (
-                      <NoDataForPeriodCard />
-                    )}
-                    <ActionItems
-                      items={currentData.actionItems}
-                      onMessageClick={openSendMessage}
-                      onReportGenerate={handleGenerateReport}
-                    />
-                  </Box>
-
-                  <AskAIChat
-                    portfolioData={currentData}
-                    historicalData={historicalData}
-                    onOpenLateNotices={openLateNoticesFromChat}
-                    onOpenSendMessage={openSendMessage}
-                    onOpenReport={openReportFromChat}
-                  />
-
+                  {buildDashboardLayout()}
                   {lastUpdated && <GeneratedTimestamp timestamp={lastUpdated} />}
                 </>
               )}
@@ -292,6 +358,12 @@ function App() {
           context={reportMockupContext}
         />
       )}
+      <CustomizeDashboardModal
+        open={customizeOpen}
+        onClose={() => setCustomizeOpen(false)}
+        cards={dashboardCards}
+        onSave={handleSaveDashboardConfig}
+      />
     </ThemeProvider>
   );
 }

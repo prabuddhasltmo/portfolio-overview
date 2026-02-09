@@ -307,7 +307,7 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
                       disabled={categoryIds.length === 0}
                     />
                     <Box>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 600, color: neutral?.[900] }}>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 450, color: neutral?.[900] }}>
                         {category}
                       </Typography>
                       <Typography sx={{ fontSize: '12px', color: neutral?.[500] }}>

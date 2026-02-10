@@ -15,13 +15,15 @@ interface AISummaryProps {
   refreshTrigger?: number;
   scenarioSentiment?: Sentiment;
   onOpenLateNotices?: () => void;
+  /** When provided, use this content instead of fetching (e.g. for report snapshot). */
+  staticContent?: { summary: string; keyTakeaway: string };
+  onDataReady?: (summary: string, keyTakeaway: string) => void;
 }
 
-export default function AISummary({ data, historicalData, refreshTrigger, scenarioSentiment, onOpenLateNotices }: AISummaryProps) {
-  const [summary, setSummary] = useState<string>(mockAISummary);
-  const [keyTakeaway, setKeyTakeaway] = useState<string>(mockKeyTakeaway);
-  const [aiSentiment, setAiSentiment] = useState<Sentiment>('neutral');
-  const [loading, setLoading] = useState(false);
+export default function AISummary({ data, historicalData, refreshTrigger, scenarioSentiment, onOpenLateNotices, staticContent, onDataReady }: AISummaryProps) {
+  const [summary, setSummary] = useState<string>(staticContent?.summary ?? mockAISummary);
+  const [keyTakeaway, setKeyTakeaway] = useState<string>(staticContent?.keyTakeaway ?? mockKeyTakeaway);
+  const [loading, setLoading] = useState(!staticContent);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
   const theme = useTheme();
   const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
@@ -40,27 +42,34 @@ export default function AISummary({ data, historicalData, refreshTrigger, scenar
         : theme.palette.warning.main;
 
   useEffect(() => {
+    if (staticContent) {
+      setSummary(staticContent.summary);
+      setKeyTakeaway(staticContent.keyTakeaway);
+      setLoading(false);
+      return;
+    }
+
     const fetchSummary = async () => {
       setLoading(true);
       try {
         const result = await generateAISummary(data, historicalData);
         setSummary(result.summary);
         setKeyTakeaway(result.keyTakeaway);
-        setAiSentiment(result.sentiment);
         setIsAIGenerated(result.summary !== mockAISummary);
+        onDataReady?.(result.summary, result.keyTakeaway);
       } catch (error) {
         console.error('Error fetching AI summary:', error);
         setSummary(mockAISummary);
         setKeyTakeaway(mockKeyTakeaway);
-        setAiSentiment('neutral');
         setIsAIGenerated(false);
+        onDataReady?.(mockAISummary, mockKeyTakeaway);
       } finally {
         setLoading(false);
       }
     };
 
     fetchSummary();
-  }, [data, historicalData, refreshTrigger]);
+  }, [data, historicalData, refreshTrigger, staticContent]);
 
   const handleRefresh = async () => {
     setLoading(true);
@@ -68,8 +77,8 @@ export default function AISummary({ data, historicalData, refreshTrigger, scenar
       const result = await generateAISummary(data, historicalData);
       setSummary(result.summary);
       setKeyTakeaway(result.keyTakeaway);
-      setAiSentiment(result.sentiment);
       setIsAIGenerated(result.summary !== mockAISummary);
+      onDataReady?.(result.summary, result.keyTakeaway);
     } catch (error) {
       console.error('Error refreshing AI summary:', error);
     } finally {
@@ -77,7 +86,7 @@ export default function AISummary({ data, historicalData, refreshTrigger, scenar
     }
   };
 
-  const showLateNoticeCTA = aiSentiment === 'bad';
+  const showLateNoticeCTA = scenarioSentiment === 'bad';
   const lateNoticeCount = data.actionItems?.filter((item) => (item.daysPastDue ?? 0) > 0).length ?? 0;
 
   return (
@@ -232,20 +241,30 @@ export default function AISummary({ data, historicalData, refreshTrigger, scenar
                 </Typography>
               </Box>
               {showLateNoticeCTA && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={onOpenLateNotices}
-                  disabled={!onOpenLateNotices}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    backgroundColor: theme.palette.error.main,
-                    '&:hover': { backgroundColor: theme.palette.error.dark },
-                  }}
-                >
+                <Box sx={{ display: 'flex', alignItems: 'center', alignSelf: 'stretch' }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={onOpenLateNotices}
+                    disabled={!onOpenLateNotices}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 500,
+                      fontSize: '0.8125rem',
+                      px: 1.5,
+                      py: 0.75,
+                      borderRadius: '8px',
+                      backgroundColor: theme.palette.error.main,
+                      boxShadow: `0 1px 3px ${alpha(theme.palette.error.main, 0.3)}`,
+                      '&:hover': {
+                        backgroundColor: theme.palette.error.dark,
+                        boxShadow: `0 2px 6px ${alpha(theme.palette.error.main, 0.35)}`,
+                      },
+                    }}
+                  >
                   Send late notices{lateNoticeCount > 0 ? ` (${lateNoticeCount})` : ''}
                 </Button>
+                </Box>
               )}
             </Box>
           </Box>

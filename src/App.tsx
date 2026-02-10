@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ThemeProvider, CssBaseline, Box, Typography, CircularProgress } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Sidebar from './components/Layout/Sidebar';
@@ -11,14 +11,21 @@ import MonthOverMonthTrends from './components/Dashboard/MonthOverMonthTrends';
 import AIInsights from './components/Dashboard/AIInsights';
 import AskAIChat from './components/Dashboard/AskAIChat';
 import ActionItems from './components/Dashboard/ActionItems';
+import { AgentWorkflowProvider } from './contexts/AgentWorkflowContext';
 import CardBox from './components/Dashboard/CardBox';
 import NoDataForPeriodCard from './components/Dashboard/NoDataForPeriodCard';
 import ReportMockupModal from './components/Dashboard/ReportMockupModal';
 import CustomizeDashboardModal from './components/Dashboard/CustomizeDashboardModal';
 import { SendMessageModal } from './components/Email';
-import { portfolioData as fallbackData, historicalPortfolioData as fallbackHistorical } from './data/mockData';
+import {
+  portfolioData as fallbackData,
+  historicalPortfolioData as fallbackHistorical,
+  mockAISummary,
+  mockKeyTakeaway,
+  mockAIInsights,
+} from './data/mockData';
 import { fetchPortfolioData, fetchScenarios, switchScenario, type Scenario, type PortfolioResponse } from './services/openai';
-import type { PortfolioData, ActionItem } from './types';
+import type { PortfolioData, ActionItem, DashboardSnapshot } from './types';
 import type { EmailDraftContext } from './types/email';
 import type { ReportMockupType, ReportMockupContext } from './types/reportMockup';
 import type { DashboardCardConfig } from './types/dashboardConfig';
@@ -42,18 +49,30 @@ function App() {
   const [reportMockupContext, setReportMockupContext] = useState<ReportMockupContext | null>(null);
   const [dashboardCards, setDashboardCards] = useState<DashboardCardConfig[]>(loadDashboardConfig);
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [dashboardSnapshot, setDashboardSnapshot] = useState<DashboardSnapshot | null>(null);
 
   const rawCurrent: PortfolioData = portfolio?.current || fallbackData;
   const rawHistorical: PortfolioData[] = portfolio?.historical || fallbackHistorical;
-  const allPeriods: PortfolioData[] = [rawCurrent, ...rawHistorical];
+
+  const allPeriods = useMemo(
+    () => [rawCurrent, ...rawHistorical],
+    [rawCurrent, rawHistorical]
+  );
 
   const effectiveKey =
     selectedPeriodKey && allPeriods.some((p) => periodKey(p.month, p.year) === selectedPeriodKey)
       ? selectedPeriodKey
       : periodKey(rawCurrent.month, rawCurrent.year);
 
-  const currentData: PortfolioData = allPeriods.find((p) => periodKey(p.month, p.year) === effectiveKey) ?? rawCurrent;
-  const historicalData: PortfolioData[] = allPeriods.filter((p) => periodKey(p.month, p.year) !== effectiveKey);
+  const currentData = useMemo(
+    () => allPeriods.find((p) => periodKey(p.month, p.year) === effectiveKey) ?? rawCurrent,
+    [allPeriods, effectiveKey, rawCurrent]
+  );
+
+  const historicalData = useMemo(
+    () => allPeriods.filter((p) => periodKey(p.month, p.year) !== effectiveKey),
+    [allPeriods, effectiveKey]
+  );
 
   const displayMonth = (() => {
     if (!selectedPeriodKey) return rawCurrent.month;
@@ -193,6 +212,13 @@ function App() {
             refreshTrigger={refreshTrigger}
             scenarioSentiment={portfolio?.sentiment}
             onOpenLateNotices={openLateNoticeModal}
+            onDataReady={(summary, keyTakeaway) =>
+              setDashboardSnapshot((prev) => ({
+                summary,
+                keyTakeaway,
+                insights: prev?.insights ?? mockAIInsights,
+              }))
+            }
           />
         ) : (
           <NoDataForPeriodCard key={id} />
@@ -231,6 +257,13 @@ function App() {
             key={id}
             data={currentData}
             refreshTrigger={refreshTrigger}
+            onDataReady={(insights) =>
+              setDashboardSnapshot((prev) => ({
+                summary: prev?.summary ?? mockAISummary,
+                keyTakeaway: prev?.keyTakeaway ?? mockKeyTakeaway,
+                insights,
+              }))
+            }
           />
         ) : (
           <NoDataForPeriodCard key={id} />
@@ -307,16 +340,17 @@ function App() {
   return (
     <ThemeProvider theme={portfolioRecapTheme}>
       <CssBaseline />
-      <Box
-        sx={{
-          display: 'flex',
-          height: '100vh',
-          bgcolor: 'background.default',
-        }}
-      >
-        <Sidebar />
-
+      <AgentWorkflowProvider>
         <Box
+          sx={{
+            display: 'flex',
+            height: '100vh',
+            bgcolor: 'background.default',
+          }}
+        >
+          <Sidebar />
+
+          <Box
           sx={{
             flex: 1,
             display: 'flex',
@@ -345,6 +379,9 @@ function App() {
                 loading={loading}
                 portfolioData={currentData}
                 historicalData={historicalData}
+                scenarioSentiment={portfolio?.sentiment}
+                dashboardCards={dashboardCards}
+                dashboardSnapshot={dashboardSnapshot}
                 onCustomize={() => setCustomizeOpen(true)}
               />
 
@@ -370,7 +407,8 @@ function App() {
             </Box>
           </Box>
         </Box>
-      </Box>
+        </Box>
+      </AgentWorkflowProvider>
 
       <SendMessageModal
         open={sendMessageOpen}

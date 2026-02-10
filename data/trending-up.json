@@ -35,6 +35,14 @@
     },
     "actionItems": [
       {
+        "id": "LN-2024-001",
+        "borrower": "Smith, John & Jane",
+        "priority": "High",
+        "category": "Checks Due",
+        "amount": 125000,
+        "daysPastDue": 95
+      },
+      {
         "id": "LN-2026-014",
         "borrower": "Lang, Rebecca",
         "priority": "Medium",

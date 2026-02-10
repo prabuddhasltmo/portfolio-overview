@@ -11,7 +11,6 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  ButtonBase,
   TextField,
   ClickAwayListener,
 } from '@mui/material';
@@ -22,12 +21,13 @@ import ScienceIcon from '@mui/icons-material/Science';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { FileText, Sparkles, Send } from 'lucide-react';
+import { FileText, Sparkles, Send, Activity } from 'lucide-react';
 import type { Scenario } from '../../services/openai';
 import type { PortfolioData, Sentiment, DashboardSnapshot } from '../../types';
 import type { DashboardCardConfig } from '../../types/dashboardConfig';
 import CardBox from './CardBox';
 import ReportViewerModal from './ReportViewerModal';
+import PowerBIPresentationModal from './PowerBIPresentationModal';
 import { MONTHS, getDefaultYears } from '../../constants/periods';
 
 export interface PeriodOption {
@@ -78,6 +78,7 @@ export default function PortfolioRecapHeader({
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [askAIVisible, setAskAIVisible] = useState(false);
   const [askAIValue, setAskAIValue] = useState('');
+  const [powerBIModalOpen, setPowerBIModalOpen] = useState(false);
   const availableYears = getAvailableYears(periods);
   const displayMonth = MONTHS.includes(month as (typeof MONTHS)[number]) ? month : MONTHS[0];
   const displayYear = availableYears.includes(year) ? year : availableYears[0] ?? year;
@@ -158,21 +159,40 @@ export default function PortfolioRecapHeader({
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-          <IconButton
-            onClick={() => setAskAIVisible((prev) => !prev)}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title="Power BI Presentation" placement="bottom">
+            <IconButton
+              onClick={() => setPowerBIModalOpen(true)}
               sx={{
                 width: 40,
                 height: 40,
                 borderRadius: '50%',
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.info.main})`,
+                background: theme.palette.error.main,
                 color: '#fff',
                 boxShadow: theme.shadows[3],
-                '&:hover': { background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.info.dark})` },
+                '&:hover': { background: theme.palette.error.dark },
               }}
             >
-              <Sparkles size={18} />
+              <Activity size={18} />
             </IconButton>
+          </Tooltip>
+          <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+            <Tooltip title="Ask AI" placement="bottom">
+              <IconButton
+                onClick={() => setAskAIVisible((prev) => !prev)}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.info.main})`,
+                  color: '#fff',
+                  boxShadow: theme.shadows[3],
+                  '&:hover': { background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.info.dark})` },
+                }}
+              >
+                <Sparkles size={18} />
+              </IconButton>
+            </Tooltip>
             {askAIVisible && (
               <ClickAwayListener
                 onClickAway={(event) => {
@@ -233,6 +253,7 @@ export default function PortfolioRecapHeader({
               </ClickAwayListener>
             )}
           </Box>
+        </Box>
 
         {scenarios.length > 0 && (
           <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -450,6 +471,12 @@ export default function PortfolioRecapHeader({
           dashboardSnapshot={dashboardSnapshot}
         />
       )}
+      <PowerBIPresentationModal
+        open={powerBIModalOpen}
+        onClose={() => setPowerBIModalOpen(false)}
+        portfolioData={portfolioData}
+        historicalData={historicalData}
+      />
     </CardBox>
   );
 }

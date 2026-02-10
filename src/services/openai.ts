@@ -202,6 +202,26 @@ export async function generateReportData(
   }
 }
 
+export async function generatePowerBIPresentation(query: string): Promise<string> {
+  try {
+    const response = await fetch(`${API_BASE}/ai/powerbi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate Power BI presentation');
+    }
+
+    const result = await response.json();
+    return result.result ?? 'No presentation details available.';
+  } catch (error) {
+    console.error('Error generating Power BI presentation:', error);
+    throw error;
+  }
+}
+
 export async function chatWithAgent(
   message: string,
   threadId?: string,

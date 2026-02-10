@@ -76,7 +76,7 @@ test('MCP chat agent generates report CTA with link when a report is requested',
 
   const reportCTA = result.ctas?.find(cta => cta.action.type === 'view_report');
   assert(reportCTA, 'Expected report CTA');
-  assert(reportCTA.action.reportLink?.includes('/reports/mock/alpha/borrower_statement'));
+  assert(reportCTA.action.reportLink?.includes('/api/reports/mock/alpha/borrower_statement'));
 });
 
 test('MCP chat agent lists scenarios when requested', async () => {

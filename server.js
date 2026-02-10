@@ -20,6 +20,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 const DATA_DIR = join(__dirname, 'data');
+const DIST_DIR = join(__dirname, 'dist');
 let currentScenario = 'trending-up';
 
 const getClient = () => {
@@ -874,9 +875,70 @@ app.delete('/api/messages/:id', (req, res) => {
   res.json({ success: true });
 });
 
-app.use(express.static(join(__dirname, 'dist')));
-app.use((_req, res) => {
-  res.sendFile(join(__dirname, 'dist', 'index.html'));
+const mockReportRoutes = ['/reports/mock/:scenarioId/:reportType/:reportId', '/api/reports/mock/:scenarioId/:reportType/:reportId'];
+app.get(mockReportRoutes, (req, res) => {
+  const { scenarioId, reportType, reportId } = req.params;
+  try {
+    const scenario = loadScenario(scenarioId, { dataDir: DATA_DIR });
+    const title = `${scenario?.name ?? 'Scenario'} – ${reportType.replace(/_/g, ' ')}`;
+    const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>${title}</title>
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 32px; color: #1f2937; }
+      .card { max-width: 640px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08); padding: 32px; }
+      h1 { margin-top: 0; font-size: 26px; }
+      .meta { color: #6b7280; margin-bottom: 16px; font-size: 14px; }
+      .section { margin-top: 24px; }
+      .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4338ca; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+      ul { padding-left: 18px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <span class="badge">Mock Report</span>
+      <h1>${title}</h1>
+      <div class="meta">Report ID: ${reportId}</div>
+      <div class="section">
+        <h2>Scenario Details</h2>
+        <p><strong>Name:</strong> ${scenario?.name ?? 'Unknown'}</p>
+        <p><strong>Description:</strong> ${scenario?.description ?? 'N/A'}</p>
+        <p><strong>Sentiment:</strong> ${scenario?.sentiment ?? 'neutral'}</p>
+      </div>
+      <div class="section">
+        <h2>Current Highlights</h2>
+        <ul>
+          <li>Total Loans: ${scenario?.current?.totalLoans ?? 'N/A'}</li>
+          <li>Principal Balance: $${scenario?.current?.principalBalance?.toLocaleString?.() ?? 'N/A'}</li>
+          <li>Collections: $${scenario?.current?.cashFlow?.moneyIn?.toLocaleString?.() ?? 'N/A'} (${scenario?.current?.cashFlow?.moneyInChange ?? 'N/A'}%)</li>
+          <li>Delinquency: ${scenario?.current?.delinquent?.percentage ?? 'N/A'}%</li>
+        </ul>
+      </div>
+      <div class="section">
+        <p>This is a sample preview automatically generated via MCP tooling. Replace with your real report experience.</p>
+      </div>
+    </div>
+  </body>
+</html>`;
+    res.send(html);
+  } catch (error) {
+    res.status(404).send('Mock report not found.');
+  }
+});
+app.use(express.static(DIST_DIR));
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+  res.sendFile(join(DIST_DIR, 'index.html'), err => {
+    if (err) {
+      if (err.code === 'ENOENT') {
+        res.status(404).send('Frontend build not found. Run `npm run build` to generate dist.');
+      } else {
+        next(err);
+      }
+    }
+  });
 });
 
 app.listen(PORT, () => {

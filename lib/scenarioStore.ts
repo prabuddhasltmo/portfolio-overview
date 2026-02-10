@@ -109,7 +109,7 @@ export const loadScenario = (
 export const listScenarios = (options: ScenarioListOptions = {}): ScenarioSummary[] => {
   const { activeScenarioId = null, dataDir: customDir } = options;
   const dataDir = resolveDataDir(customDir);
-  const files = readdirSync(dataDir).filter(f => f.endsWith('.json'));
+  const files = readdirSync(dataDir).filter(f => f.endsWith('.json') && f !== 'messages.json');
 
   return files.map(file => {
     const scenarioId = file.replace(/\.json$/, '');

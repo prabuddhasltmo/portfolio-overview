@@ -41,7 +41,7 @@ export const createActionTools = (options: ScenarioToolOptions = {}): Registered
         scenarioId,
         reportType,
         generatedAt: new Date().toISOString(),
-        link: `/reports/mock/${scenarioId}/${reportType}/${reportId}`,
+        link: `/api/reports/mock/${scenarioId}/${reportType}/${reportId}`,
       };
     },
   };

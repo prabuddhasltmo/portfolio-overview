@@ -1711,6 +1711,49 @@ Be concise. After completing actions, summarize what you did with specific numbe
   }
 });
 
+app.post('/api/ai/powerbi', async (req, res) => {
+  const client = getClient();
+  const { query } = req.body;
+
+  if (!client) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+
+  const systemPrompt = `You are an AI assistant that drafts narrative descriptions for Power BI presentations.
+Describe the requested visualization with:
+- A concise chart title
+- Bulleted key takeaways (2-4 bullets)
+- Guidance on how to construct the chart or interpret it
+Keep the tone professional and insight-driven.`;
+
+  const userPrompt = query?.trim() || 'Create a Power BI narrative.';
+
+  try {
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
+      temperature: 0.4,
+      max_tokens: 700,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    });
+
+    let content = response.choices[0]?.message?.content || '';
+    if (Array.isArray(content)) {
+      content = content
+        .map(part => (typeof part === 'string' ? part : part?.text || ''))
+        .join('\n');
+    }
+
+    res.json({
+      result: content?.toString().trim() || 'Power BI narration unavailable.',
+    });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to generate Power BI presentation' });
+  }
+});
+
 const OPENAI_TOOLS = [
   {
     type: 'function',

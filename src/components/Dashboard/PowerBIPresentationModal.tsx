@@ -222,7 +222,7 @@ export default function PowerBIPresentationModal({
       fullWidth
       PaperProps={{ sx: { borderRadius: 2, p: 2, width: '80vw', maxWidth: '80vw' } }}
     >
-      <DialogTitle sx={{ fontWeight: 600, pb: 1 }}>Power BI Presentation</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600, pb: 1 }}>Pulse</DialogTitle>
       <DialogContent
         sx={{
           pt: 1,

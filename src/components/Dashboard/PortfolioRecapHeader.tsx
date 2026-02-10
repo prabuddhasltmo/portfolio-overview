@@ -11,6 +11,9 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  ButtonBase,
+  TextField,
+  ClickAwayListener,
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import InsightsIcon from '@mui/icons-material/Insights';
@@ -19,7 +22,7 @@ import ScienceIcon from '@mui/icons-material/Science';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { FileText } from 'lucide-react';
+import { FileText, Sparkles, Send } from 'lucide-react';
 import type { Scenario } from '../../services/openai';
 import type { PortfolioData } from '../../types';
 import CardBox from './CardBox';
@@ -66,6 +69,8 @@ export default function PortfolioRecapHeader({
 }: PortfolioRecapHeaderProps) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [askAIVisible, setAskAIVisible] = useState(false);
+  const [askAIValue, setAskAIValue] = useState('');
   const availableYears = getAvailableYears(periods);
   const displayMonth = MONTHS.includes(month as (typeof MONTHS)[number]) ? month : MONTHS[0];
   const displayYear = availableYears.includes(year) ? year : availableYears[0] ?? year;
@@ -73,6 +78,14 @@ export default function PortfolioRecapHeader({
   const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
   const ui = (theme.palette as { ui?: Record<string, string> }).ui;
   const activeScenario = scenarios.find((scenario) => scenario.active);
+  const handleAskAISubmit = () => {
+    const trimmed = askAIValue.trim();
+    if (!trimmed) return;
+    window.dispatchEvent(new CustomEvent('ask-ai-request', { detail: { question: trimmed } }));
+    setAskAIValue('');
+    setAskAIVisible(false);
+    document.getElementById('ask-ai-chat')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const selectStyles = {
     fontSize: '14px',
@@ -137,7 +150,83 @@ export default function PortfolioRecapHeader({
         </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+          <IconButton
+            onClick={() => setAskAIVisible((prev) => !prev)}
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.info.main})`,
+                color: '#fff',
+                boxShadow: theme.shadows[3],
+                '&:hover': { background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.info.dark})` },
+              }}
+            >
+              <Sparkles size={18} />
+            </IconButton>
+            {askAIVisible && (
+              <ClickAwayListener
+                onClickAway={(event) => {
+                  const target = event.target as HTMLElement;
+                  if (!target.closest('.ask-ai-overlay')) {
+                    setAskAIVisible(false);
+                    setAskAIValue('');
+                  }
+                }}
+              >
+                <Box
+                  className="ask-ai-overlay"
+                  sx={{
+                    position: 'absolute',
+                    top: '110%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 300,
+                    p: 1.5,
+                    bgcolor: theme.palette.background.paper,
+                    boxShadow: theme.shadows[6],
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    zIndex: 10,
+                  }}
+                >
+                  <TextField
+                    size="small"
+                    autoFocus
+                    placeholder="Ask AI..."
+                    value={askAIValue}
+                    onChange={(e) => setAskAIValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAskAISubmit();
+                      } else if (e.key === 'Escape') {
+                        setAskAIVisible(false);
+                        setAskAIValue('');
+                      }
+                    }}
+                    fullWidth
+                  />
+                  <IconButton
+                    onClick={handleAskAISubmit}
+                    size="small"
+                    sx={{
+                      backgroundColor: theme.palette.primary.main,
+                      color: '#fff',
+                      '&:hover': { backgroundColor: theme.palette.primary.dark },
+                    }}
+                  >
+                    <Send size={14} />
+                  </IconButton>
+                </Box>
+              </ClickAwayListener>
+            )}
+          </Box>
+
         {scenarios.length > 0 && (
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <Select

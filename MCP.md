@@ -8,13 +8,13 @@
 ### Architecture Diagram
 ```mermaid
 flowchart LR
-    subgraph Frontend (React)
+    subgraph "Frontend (React)"
         UI[Ask AI Panel]
     end
-    subgraph Backend (Express)
+    subgraph "Backend (Express)"
         API[/ /api/ai/chat /]
         Agent[MCP Chat Agent]
-        subgraph MCP Server
+        subgraph "MCP Server"
             Tools[[Scenario & Action Tools]]
         end
         Data[(data/*.json)]

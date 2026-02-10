@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -14,7 +14,7 @@ import CardBox from './CardBox';
 import ChatChart from './ChatChart';
 import ChatCTAButtons from './ChatCTAButtons';
 import { chatWithAI } from '../../services/openai';
-import type { PortfolioData, ChatMessage, CTAAction } from '../../types';
+import type { PortfolioData, ChatMessage, CTAAction, ActionItem } from '../../types';
 import type { EmailDraftContext } from '../../types/email';
 import type { ReportMockupType } from '../../types/reportMockup';
 
@@ -49,6 +49,25 @@ export default function AskAIChat({
   ]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const borrowerLookup = useMemo(() => {
+    const map = new Map<string, ActionItem>();
+    (portfolioData.actionItems ?? []).forEach(item => {
+      if (item.id) {
+        map.set(item.id, item);
+      }
+    });
+    return map;
+  }, [portfolioData.actionItems]);
+
+  const resolveBorrowerName = (action: CTAAction) => {
+    if (action.type !== 'send_message') return undefined;
+    if (action.borrowerName) return action.borrowerName;
+    if (action.borrowerId && borrowerLookup.has(action.borrowerId)) {
+      return borrowerLookup.get(action.borrowerId)?.borrower;
+    }
+    return undefined;
+  };
+
   const handleToggleExpand = () => {
     setExpanded((prev) => !prev);
   };
@@ -61,7 +80,7 @@ export default function AskAIChat({
       case 'send_message': {
         const sendContext: EmailDraftContext = {
           loanId: action.borrowerId || '',
-          borrowerName: action.borrowerId || 'Borrower',
+          borrowerName: resolveBorrowerName(action) || action.borrowerId || 'Borrower',
           borrowerEmail: action.borrowerEmail,
           amount: 0,
           emailType: 'collection_followup',
@@ -70,7 +89,11 @@ export default function AskAIChat({
         break;
       }
       case 'view_report':
-        onOpenReport?.(action.reportType);
+        if (action.reportLink) {
+          window.open(action.reportLink, '_blank', 'noopener,noreferrer');
+        } else {
+          onOpenReport?.(action.reportType);
+        }
         break;
     }
   };
@@ -305,7 +328,11 @@ export default function AskAIChat({
                   <ChatChart data={msg.chart} />
                 )}
                 {msg.role === 'assistant' && msg.ctas && msg.ctas.length > 0 && (
-                  <ChatCTAButtons ctas={msg.ctas} onAction={handleCTAAction} />
+                  <ChatCTAButtons
+                    ctas={msg.ctas}
+                    onAction={handleCTAAction}
+                    borrowerLookup={borrowerLookup}
+                  />
                 )}
               </Box>
             </Box>

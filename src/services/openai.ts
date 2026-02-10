@@ -3,6 +3,7 @@ import { mockAISummary, mockAIInsights, mockSentiment, mockKeyTakeaway } from '.
 
 const API_BASE = '/api';
 
+
 export interface Scenario {
   id: string;
   name: string;

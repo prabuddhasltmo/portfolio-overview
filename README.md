@@ -1,6 +1,6 @@
 # Portfolio Overview
 
-A React dashboard for mortgage portfolio analytics with AI-powered insights.
+A React dashboard for mortgage portfolio analytics with AI-powered insights. This app uses MCP to fetch authoritative scenario data, trigger server-side tools (like report mockups), and keep the chatbot in sync without extra UI wiring. See [MCP.md](./MCP.md) for architecture details and demo ideas.
 
 ## Setup
 
@@ -25,7 +25,7 @@ A React dashboard for mortgage portfolio analytics with AI-powered insights.
    ```
    By default, Vite runs on http://localhost:5173
 
-4. (Optional) Start the Express API server:
+4. (Optional) Start the Express API server (automatically compiles TypeScript helpers):
    ```bash
    npm run server
    ```
@@ -68,6 +68,7 @@ On the frontend, `usePortfolioRecap` fetches `/api/portfolio` and merges it with
 ## Scripts
 
 - `npm run dev` - Start development server
+- `npm run build-tools` - Compile shared MCP/utility TypeScript helpers
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint

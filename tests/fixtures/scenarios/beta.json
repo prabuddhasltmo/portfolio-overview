@@ -1,0 +1,9 @@
+{
+  "name": "Beta Scenario",
+  "description": "Beta description",
+  "current": {
+    "month": "February",
+    "year": 2024
+  },
+  "historical": []
+}

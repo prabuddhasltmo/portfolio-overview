@@ -1,11 +1,12 @@
 import { Box, IconButton, Tooltip, alpha } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Mail, FileText, Send, AlertTriangle } from 'lucide-react';
-import type { ChatCTA, CTAAction } from '../../types';
+import type { ChatCTA, CTAAction, ActionItem } from '../../types';
 
 interface ChatCTAButtonsProps {
   ctas: ChatCTA[];
   onAction: (action: CTAAction) => void;
+  borrowerLookup?: Map<string, ActionItem>;
 }
 
 const iconMap = {
@@ -15,7 +16,13 @@ const iconMap = {
   alert: AlertTriangle,
 } as const;
 
-const ChatCTAButtons = ({ ctas, onAction }: ChatCTAButtonsProps) => {
+const formatBorrowerName = (name: string | undefined) => {
+  if (!name) return undefined;
+  const parts = name.split(',');
+  return parts.length > 1 ? parts[0].trim() : name;
+};
+
+const ChatCTAButtons = ({ ctas, onAction, borrowerLookup }: ChatCTAButtonsProps) => {
   const theme = useTheme();
   const blueColor =
     (theme.palette as { ui?: { iconBlue?: string } }).ui?.iconBlue ??
@@ -38,9 +45,20 @@ const ChatCTAButtons = ({ ctas, onAction }: ChatCTAButtonsProps) => {
     >
       {ctas.map((cta, index) => {
         const IconComponent = iconMap[cta.icon] || AlertTriangle;
+        let borrowerName: string | undefined;
+        if (cta.action.type === 'send_message') {
+          borrowerName = cta.action.borrowerName;
+          if (!borrowerName && cta.action.borrowerId && borrowerLookup?.has(cta.action.borrowerId)) {
+            borrowerName = borrowerLookup.get(cta.action.borrowerId)?.borrower;
+          }
+        }
+        const displayLabel =
+          borrowerName && cta.action.type === 'send_message'
+            ? `Message ${formatBorrowerName(borrowerName)}`
+            : cta.label;
         
         return (
-          <Tooltip key={index} title={cta.label} placement="top" arrow>
+          <Tooltip key={index} title={displayLabel} placement="top" arrow>
             <IconButton
               size="small"
               onClick={() => onAction(cta.action)}
@@ -74,7 +92,7 @@ const ChatCTAButtons = ({ ctas, onAction }: ChatCTAButtonsProps) => {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {cta.label}
+                {displayLabel}
               </Box>
             </IconButton>
           </Tooltip>

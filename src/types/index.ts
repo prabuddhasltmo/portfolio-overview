@@ -93,8 +93,8 @@ export interface ChartData {
 // CTA actions the AI can suggest
 export type CTAAction =
   | { type: 'late_notices'; borrowerId?: string }
-  | { type: 'send_message'; borrowerId?: string; borrowerEmail?: string }
-  | { type: 'view_report'; reportType: 'late_notices' | 'borrower_statement' | 'escrow_analysis' };
+  | { type: 'send_message'; borrowerId?: string; borrowerEmail?: string; borrowerName?: string }
+  | { type: 'view_report'; reportType: 'late_notices' | 'borrower_statement' | 'escrow_analysis'; reportLink?: string };
 
 export interface ChatCTA {
   label: string;

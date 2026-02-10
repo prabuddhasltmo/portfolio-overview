@@ -160,7 +160,7 @@ export default function PortfolioRecapHeader({
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Tooltip title="Power BI Presentation" placement="bottom">
+          <Tooltip title="Pulse" placement="bottom">
             <IconButton
               onClick={() => setPowerBIModalOpen(true)}
               sx={{

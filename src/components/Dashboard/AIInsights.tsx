@@ -13,6 +13,9 @@ import CardBox from './CardBox';
 interface AIInsightsProps {
   data: PortfolioData;
   refreshTrigger?: number;
+  /** When provided, use these insights instead of fetching (e.g. for report snapshot). */
+  staticInsights?: AIInsight[];
+  onDataReady?: (insights: AIInsight[]) => void;
 }
 
 const getSeverityColor = (severity: string, theme: Theme) => {
@@ -58,9 +61,9 @@ const getInsightSeverity = (category: string) => {
   }
 };
 
-export default function AIInsights({ data, refreshTrigger }: AIInsightsProps) {
-  const [insights, setInsights] = useState<AIInsight[]>(mockAIInsights);
-  const [loading, setLoading] = useState(false);
+export default function AIInsights({ data, refreshTrigger, staticInsights, onDataReady }: AIInsightsProps) {
+  const [insights, setInsights] = useState<AIInsight[]>(staticInsights ?? mockAIInsights);
+  const [loading, setLoading] = useState(!staticInsights);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
   const theme = useTheme();
   const neutral = (theme.palette as { neutral?: Record<string, string> }).neutral;
@@ -70,23 +73,31 @@ export default function AIInsights({ data, refreshTrigger }: AIInsightsProps) {
     theme.palette.primary.main;
 
   useEffect(() => {
+    if (staticInsights) {
+      setInsights(staticInsights);
+      setLoading(false);
+      return;
+    }
+
     const fetchInsights = async () => {
       setLoading(true);
       try {
         const result = await generateAIInsights(data);
         setInsights(result);
         setIsAIGenerated(JSON.stringify(result) !== JSON.stringify(mockAIInsights));
+        onDataReady?.(result);
       } catch (error) {
         console.error('Error fetching AI insights:', error);
         setInsights(mockAIInsights);
         setIsAIGenerated(false);
+        onDataReady?.(mockAIInsights);
       } finally {
         setLoading(false);
       }
     };
 
     fetchInsights();
-  }, [data, refreshTrigger]);
+  }, [data, refreshTrigger, staticInsights]);
 
   const handleRefresh = async () => {
     setLoading(true);
@@ -94,6 +105,7 @@ export default function AIInsights({ data, refreshTrigger }: AIInsightsProps) {
       const result = await generateAIInsights(data);
       setInsights(result);
       setIsAIGenerated(true);
+      onDataReady?.(result);
     } catch (error) {
       console.error('Error refreshing AI insights:', error);
     } finally {

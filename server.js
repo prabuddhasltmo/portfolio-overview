@@ -7,6 +7,19 @@ import OpenAI from 'openai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, readdirSync } from 'fs';
+import { DefaultAzureCredential, ClientSecretCredential } from '@azure/identity';
+import { AIProjectClient } from '@azure/ai-projects';
+
+/** Get Azure credential from env (service principal) or fall back to DefaultAzureCredential (az login). */
+function getAzureCredential() {
+  const tenantId = process.env.AZURE_TENANT_ID;
+  const clientId = process.env.AZURE_CLIENT_ID;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET;
+  if (tenantId && clientId && clientSecret) {
+    return new ClientSecretCredential(tenantId, clientId, clientSecret);
+  }
+  return new DefaultAzureCredential();
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,6 +32,136 @@ const PORT = process.env.PORT || 3000;
 
 const DATA_DIR = join(__dirname, 'data');
 let currentScenario = 'trending-up';
+
+// Mock checks data for workflow automation (single source of truth, mirrors src/data/mockData.ts)
+const MOCK_CHECKS = [
+  {
+    id: 'CHK-001',
+    ach: true,
+    notes: false,
+    payeeAccount: 'LENDER-A',
+    payeeName: 'GREYSTONE LLC.',
+    checkReleaseDate: '2025-09-19',
+    payAmount: -1097.45,
+    paymentDueDate: '2025-12-01',
+    paymentReceived: '2025-09-18',
+    payStatus: 'Print',
+    loanAccount: 'B001000',
+  },
+  {
+    id: 'CHK-002',
+    ach: true,
+    notes: false,
+    payeeAccount: 'LENDER-A',
+    payeeName: 'GREYSTONE LLC.',
+    checkReleaseDate: '2025-09-22',
+    payAmount: 409.4,
+    paymentDueDate: '2025-11-01',
+    paymentReceived: '2025-09-18',
+    payStatus: 'Print',
+    loanAccount: 'B001000',
+  },
+  {
+    id: 'CHK-003',
+    ach: true,
+    notes: true,
+    payeeAccount: 'LENDER-A',
+    payeeName: 'GREYSTONE LLC.',
+    checkReleaseDate: '2025-09-22',
+    payAmount: -1506.85,
+    paymentDueDate: '2025-11-01',
+    paymentReceived: '2025-09-18',
+    payStatus: 'Print',
+    loanAccount: 'B001000',
+  },
+  {
+    id: 'CHK-004',
+    ach: false,
+    notes: false,
+    payeeAccount: 'LENDER-B',
+    payeeName: 'Paulithereum Inc.',
+    checkReleaseDate: '2025-10-09',
+    payAmount: 1097.94,
+    paymentDueDate: '2025-11-01',
+    paymentReceived: '2025-09-29',
+    payStatus: 'Print',
+    loanAccount: 'LN-2024-001',
+  },
+  {
+    id: 'CHK-005',
+    ach: false,
+    notes: false,
+    payeeAccount: 'LENDER-B',
+    payeeName: 'Paulithereum Inc.',
+    checkReleaseDate: '2025-10-09',
+    payAmount: -1097.94,
+    paymentDueDate: '2025-11-01',
+    paymentReceived: '2025-09-29',
+    payStatus: 'Print',
+    loanAccount: 'LN-2024-001',
+  },
+  {
+    id: 'CHK-006',
+    ach: true,
+    notes: true,
+    payeeAccount: 'LENDER-A',
+    payeeName: 'GREYSTONE LLC.',
+    checkReleaseDate: '2025-10-24',
+    payAmount: 71.43,
+    paymentDueDate: '2025-10-01',
+    paymentReceived: '2025-10-14',
+    payStatus: 'Print',
+    loanAccount: 'LN-2024-002',
+  },
+  {
+    id: 'CHK-007',
+    ach: true,
+    notes: false,
+    payeeAccount: 'LENDER-A',
+    payeeName: 'GREYSTONE LLC.',
+    checkReleaseDate: '2025-10-24',
+    payAmount: 3191.96,
+    paymentDueDate: '2025-11-01',
+    paymentReceived: '2025-10-14',
+    payStatus: 'Print',
+    loanAccount: 'LN-2024-003',
+  },
+  {
+    id: 'CHK-008',
+    ach: true,
+    notes: false,
+    payeeAccount: 'LENDER-A',
+    payeeName: 'GREYSTONE LLC.',
+    checkReleaseDate: '2025-10-30',
+    payAmount: 6191.96,
+    paymentDueDate: '2025-12-01',
+    paymentReceived: '2025-10-20',
+    payStatus: 'Print',
+    loanAccount: 'LN-2024-004',
+  },
+  {
+    id: 'CHK-009',
+    ach: true,
+    notes: false,
+    payeeAccount: 'LENDER-A',
+    payeeName: 'GREYSTONE LLC.',
+    checkReleaseDate: '2025-11-24',
+    payAmount: 1392.76,
+    paymentDueDate: '2026-01-01',
+    paymentReceived: '2025-11-14',
+    payStatus: 'Print',
+    loanAccount: 'LN-2024-005',
+  },
+];
+
+/** Returns a copy of the mock checks array. */
+const loadMockChecks = () => [...MOCK_CHECKS];
+
+// In-memory store for printed checks and notifications (for demo purposes)
+const workflowState = {
+  printedChecks: new Set(),
+  notifications: [],
+};
 
 const loadScenario = (name) => {
   const filePath = join(DATA_DIR, `${name}.json`);
@@ -971,6 +1114,1167 @@ app.delete('/api/messages/:id', (req, res) => {
   }
   messagesStore.splice(index, 1);
   res.json({ success: true });
+});
+
+// ============================================
+// WORKFLOW AUTOMATION ENDPOINTS
+// ============================================
+
+/**
+ * @swagger
+ * /api/workflow/checks/{loanId}:
+ *   get:
+ *     summary: Get checks available for printing for a loan
+ *     tags: [Workflow]
+ *     parameters:
+ *       - in: path
+ *         name: loanId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of checks for the loan
+ */
+app.get('/api/workflow/checks/:loanId', (req, res) => {
+  const { loanId } = req.params;
+  const allChecks = loadMockChecks();
+  
+  // Filter checks for this loan, or return all if loanId matches any or is generic
+  let checks = allChecks.filter(c => 
+    c.loanAccount === loanId || 
+    c.loanAccount.toLowerCase().includes(loanId.toLowerCase()) ||
+    loanId.toLowerCase().includes(c.loanAccount.toLowerCase())
+  );
+  
+  // If no exact match, return all checks (for demo flexibility)
+  if (checks.length === 0) {
+    checks = allChecks;
+  }
+
+  // Filter out already printed checks
+  checks = checks.filter(c => !workflowState.printedChecks.has(c.id));
+
+  const totalAmount = checks.reduce((sum, c) => sum + c.payAmount, 0);
+
+  res.json({
+    loanId,
+    checks,
+    count: checks.length,
+    totalAmount,
+  });
+});
+
+/**
+ * @swagger
+ * /api/workflow/checks/print:
+ *   post:
+ *     summary: Print selected checks
+ *     tags: [Workflow]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               loanId:
+ *                 type: string
+ *               checkIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Print confirmation
+ */
+app.post('/api/workflow/checks/print', (req, res) => {
+  const { loanId, checkIds } = req.body;
+  const allChecks = loadMockChecks();
+
+  // Get checks for this loan
+  let checks = allChecks.filter(c => 
+    c.loanAccount === loanId || 
+    c.loanAccount.toLowerCase().includes(loanId.toLowerCase()) ||
+    loanId.toLowerCase().includes(c.loanAccount.toLowerCase())
+  );
+
+  if (checks.length === 0) {
+    checks = allChecks;
+  }
+
+  // Filter to only requested checkIds if provided
+  if (checkIds && checkIds.length > 0) {
+    checks = checks.filter(c => checkIds.includes(c.id));
+  }
+
+  // Filter out already printed
+  checks = checks.filter(c => !workflowState.printedChecks.has(c.id));
+
+  // Mark as printed
+  checks.forEach(c => workflowState.printedChecks.add(c.id));
+
+  const totalAmount = checks.reduce((sum, c) => sum + c.payAmount, 0);
+
+  res.json({
+    success: true,
+    loanId,
+    printedCount: checks.length,
+    totalAmount,
+    checkIds: checks.map(c => c.id),
+    message: `Successfully printed ${checks.length} check(s) totaling $${Math.abs(totalAmount).toLocaleString()}`,
+  });
+});
+
+/**
+ * @swagger
+ * /api/workflow/lender-notification:
+ *   post:
+ *     summary: Send lender notification of electronic deposit
+ *     tags: [Workflow]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               loanId:
+ *                 type: string
+ *               transmissionType:
+ *                 type: string
+ *               fromDate:
+ *                 type: string
+ *               toDate:
+ *                 type: string
+ *               envelopeSize:
+ *                 type: string
+ *               replaceBorrowerName:
+ *                 type: boolean
+ *               displayLateCharges:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Notification confirmation
+ */
+app.post('/api/workflow/lender-notification', (req, res) => {
+  const {
+    loanId,
+    transmissionType = 'transmission_date',
+    fromDate = new Date().toISOString().split('T')[0],
+    toDate = new Date().toISOString().split('T')[0],
+    envelopeSize = 'standard',
+    replaceBorrowerName = false,
+    displayLateCharges = false,
+  } = req.body;
+
+  const notification = {
+    id: `NOTIF-${Date.now()}`,
+    loanId,
+    transmissionType,
+    fromDate,
+    toDate,
+    envelopeSize,
+    replaceBorrowerName,
+    displayLateCharges,
+    createdAt: new Date().toISOString(),
+    status: 'sent',
+  };
+
+  workflowState.notifications.push(notification);
+
+  res.json({
+    success: true,
+    notification,
+    message: `Lender notification sent successfully for loan ${loanId}`,
+  });
+});
+
+/**
+ * @swagger
+ * /api/workflow/reset:
+ *   post:
+ *     summary: Reset workflow state (for demo purposes)
+ *     tags: [Workflow]
+ *     responses:
+ *       200:
+ *         description: Workflow state reset
+ */
+app.post('/api/workflow/reset', (_req, res) => {
+  workflowState.printedChecks.clear();
+  workflowState.notifications = [];
+  res.json({ success: true, message: 'Workflow state reset' });
+});
+
+// ============================================
+// AGENT ORCHESTRATION ENDPOINT
+// ============================================
+
+// Tool execution functions
+const executeAgentTool = async (toolName, args) => {
+  const baseUrl = `http://localhost:${PORT}`;
+
+  switch (toolName) {
+    case 'get_checks_for_loan': {
+      const response = await fetch(`${baseUrl}/api/workflow/checks/${args.loanId}`);
+      return await response.json();
+    }
+    case 'print_checks': {
+      const response = await fetch(`${baseUrl}/api/workflow/checks/print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args),
+      });
+      return await response.json();
+    }
+    case 'send_lender_notification': {
+      const response = await fetch(`${baseUrl}/api/workflow/lender-notification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args),
+      });
+      return await response.json();
+    }
+    default:
+      return { error: `Unknown tool: ${toolName}` };
+  }
+};
+
+// Pending agent runs (pause for user input). Key: runId
+const pendingAgentRuns = new Map();
+
+/**
+ * @swagger
+ * /api/agent/status:
+ *   get:
+ *     summary: Check agent workflow setup (backend running, which mode)
+ *     tags: [Agent]
+ *     responses:
+ *       200:
+ *         description: Agent status
+ */
+app.get('/api/agent/status', (_req, res) => {
+  const endpoint = process.env.AZURE_AI_PROJECT_ENDPOINT || process.env.AZURE_EXISTING_AIPROJECT_ENDPOINT;
+  const agentId = process.env.AZURE_AI_AGENT_ID || process.env.AZURE_EXISTING_AGENT_ID;
+  console.log('[DEBUG] /api/agent/status read - endpoint:', endpoint, 'agentId:', agentId);
+  const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+  const mode = endpoint && agentId ? 'azure' : openaiKey ? 'openai' : 'none';
+  const useServicePrincipal = !!(process.env.AZURE_TENANT_ID && process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET);
+  res.json({
+    status: 'ok',
+    mode,
+    message: mode === 'azure'
+      ? (useServicePrincipal
+          ? 'Azure agent configured; using service principal from .env (no az login required).'
+          : 'Azure agent configured; ensure you are logged in (az login) or set AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET.')
+      : mode === 'openai'
+        ? 'Using OpenAI fallback for workflow. Backend and workflow endpoints are ready.'
+        : 'No AI provider configured. Set OPENAI_API_KEY for OpenAI fallback, or AZURE_AI_PROJECT_ENDPOINT + AZURE_AI_AGENT_ID for Azure.',
+  });
+});
+
+/**
+ * @swagger
+ * /api/agent/chat:
+ *   post:
+ *     summary: Chat with the AI agent for workflow automation
+ *     tags: [Agent]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *               threadId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Agent response with actions taken
+ */
+app.post('/api/agent/chat', async (req, res) => {
+  const { message, threadId, interactive } = req.body;
+
+  const endpoint = process.env.AZURE_AI_PROJECT_ENDPOINT || process.env.AZURE_EXISTING_AIPROJECT_ENDPOINT;
+  const agentId = process.env.AZURE_AI_AGENT_ID || process.env.AZURE_EXISTING_AGENT_ID;
+
+  console.log('[DEBUG] agent/chat - interactive:', interactive, 'azure:', !!(endpoint && agentId));
+  
+  if (!endpoint || !agentId) {
+    // Fallback to OpenAI-based simulation when Foundry is not configured
+    const client = getClient();
+    if (!client) {
+      return res.status(500).json({ error: 'No AI provider configured' });
+    }
+
+    // Simulate agent behavior using OpenAI with function calling
+    const tools = [
+      {
+        type: 'function',
+        function: {
+          name: 'get_checks_for_loan',
+          description: 'Get all checks available for printing for a given loan',
+          parameters: {
+            type: 'object',
+            properties: {
+              loanId: { type: 'string', description: 'The loan account ID' },
+            },
+            required: ['loanId'],
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'print_checks',
+          description: 'Submit selected checks for printing',
+          parameters: {
+            type: 'object',
+            properties: {
+              loanId: { type: 'string', description: 'The loan account ID' },
+              checkIds: { type: 'array', items: { type: 'string' }, description: 'Check IDs to print' },
+            },
+            required: ['loanId'],
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'send_lender_notification',
+          description: 'Send lender notification of electronic deposit',
+          parameters: {
+            type: 'object',
+            properties: {
+              loanId: { type: 'string', description: 'The loan account ID' },
+              transmissionType: { type: 'string' },
+              fromDate: { type: 'string' },
+              toDate: { type: 'string' },
+              envelopeSize: { type: 'string' },
+              replaceBorrowerName: { type: 'boolean' },
+              displayLateCharges: { type: 'boolean' },
+            },
+            required: ['loanId'],
+          },
+        },
+      },
+    ];
+
+    const systemPrompt = `You are a workflow automation assistant for a mortgage servicing company. You help users automate check printing and lender notification workflows.
+
+When a user asks to print checks or automate the workflow for a loan:
+1. First call get_checks_for_loan to see available checks
+2. Call print_checks to print them
+3. Call send_lender_notification to notify the lender
+
+Be concise. After completing actions, summarize what you did with specific numbers.`;
+
+    try {
+      const actions = [];
+      let messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ];
+
+      // Run the agent loop
+      let continueLoop = true;
+      while (continueLoop) {
+        const response = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages,
+          tools,
+          tool_choice: 'auto',
+        });
+
+        const assistantMessage = response.choices[0].message;
+        messages.push(assistantMessage);
+
+        if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+          const firstCall = assistantMessage.tool_calls[0];
+          const toolName = firstCall.function.name;
+          const toolArgs = JSON.parse(firstCall.function.arguments || '{}');
+
+          if (interactive && toolName === 'get_checks_for_loan') {
+            const checksResult = await executeAgentTool(toolName, toolArgs);
+            const checks = checksResult?.checks ?? [];
+            const synthRunId = `openai-${Date.now()}`;
+            const synthThreadId = threadId || `thread-${Date.now()}`;
+            pendingAgentRuns.set(synthRunId, {
+              threadId: synthThreadId,
+              runId: synthRunId,
+              mode: 'openai',
+              loanId: toolArgs.loanId,
+              messages: [...messages, assistantMessage],
+              firstToolCall: firstCall,
+              pendingToolCalls: assistantMessage.tool_calls,
+              toolOutputForGetChecks: {
+                ...checksResult,
+                userSelectedCheckIds: null,
+              },
+              actions: [{ tool: toolName, args: toolArgs, result: checksResult }],
+            });
+            console.log('[DEBUG] OpenAI interactive - returning selectChecks, checks:', checks.length);
+            return res.json({
+              status: 'awaiting_user',
+              uiAction: 'selectChecks',
+              loanId: toolArgs.loanId,
+              checks,
+              threadId: synthThreadId,
+              runId: synthRunId,
+              actions: [{ tool: toolName, args: toolArgs, result: checksResult }],
+            });
+          }
+
+          for (const toolCall of assistantMessage.tool_calls) {
+            const tn = toolCall.function.name;
+            const ta = JSON.parse(toolCall.function.arguments || '{}');
+            const toolResult = await executeAgentTool(tn, ta);
+            actions.push({ tool: tn, args: ta, result: toolResult });
+            messages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(toolResult),
+            });
+          }
+        } else {
+          // No more tool calls, we have the final response
+          continueLoop = false;
+          
+          return res.json({
+            message: assistantMessage.content,
+            threadId: threadId || `thread-${Date.now()}`,
+            actions,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Agent error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+  } else {
+    // Use Azure AI Foundry Agent (endpoint + agent ID; auth from env or DefaultAzureCredential)
+    try {
+      const credential = getAzureCredential();
+      const projectClient = AIProjectClient.fromEndpoint(endpoint, credential);
+      const agentsClient = projectClient.agents;
+
+      let resolvedThreadId = threadId;
+      if (!resolvedThreadId) {
+        const thread = await agentsClient.threads.create();
+        resolvedThreadId = thread.id;
+      }
+
+      await agentsClient.messages.create(resolvedThreadId, 'user', message);
+
+      let run = await agentsClient.runs.create(resolvedThreadId, agentId);
+      const actions = [];
+
+      const pollIntervalMs = 1000;
+      const maxWaitMs = 120000;
+      const start = Date.now();
+
+      while (Date.now() - start < maxWaitMs) {
+        if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
+          break;
+        }
+
+        if (run.status === 'requires_action') {
+          const action = run.requiredAction;
+          if (action && action.type === 'submit_tool_outputs' && action.submitToolOutputs?.toolCalls) {
+            const toolCalls = action.submitToolOutputs.toolCalls;
+            const firstCall = toolCalls.find((c) => c.type === 'function' && c.function);
+            const name = firstCall?.function?.name;
+            const args = firstCall ? JSON.parse(firstCall.function.arguments || '{}') : {};
+
+            console.log('[DEBUG] Azure requires_action - tool:', name, 'interactive:', interactive);
+
+            if (interactive && name === 'get_checks_for_loan') {
+              const checksResult = await executeAgentTool(name, args);
+              actions.push({ tool: name, args, result: checksResult });
+              const checks = checksResult?.checks ?? [];
+              pendingAgentRuns.set(run.id, {
+                threadId: resolvedThreadId,
+                runId: run.id,
+                agentsClient,
+                actions: [...actions],
+                pendingToolCalls: toolCalls,
+                resumeAction: 'selectChecks',
+                loanId: args.loanId,
+              });
+              return res.json({
+                status: 'awaiting_user',
+                uiAction: 'selectChecks',
+                loanId: args.loanId,
+                checks,
+                threadId: resolvedThreadId,
+                runId: run.id,
+                actions,
+              });
+            }
+            if (interactive && name === 'print_checks') {
+              const checks = args.checkIds ?? [];
+              let totalAmount = 0;
+              try {
+                const cr = await executeAgentTool('get_checks_for_loan', { loanId: args.loanId });
+                const byId = new Map((cr?.checks ?? []).map((c) => [c.id, c]));
+                totalAmount = checks.reduce((s, id) => s + (byId.get(id)?.payAmount ?? 0), 0);
+              } catch {
+                totalAmount = 0;
+              }
+              pendingAgentRuns.set(run.id, {
+                threadId: resolvedThreadId,
+                runId: run.id,
+                agentsClient,
+                actions: [...actions],
+                pendingToolCalls: toolCalls,
+                resumeAction: 'confirmPrint',
+                loanId: args.loanId,
+                printCheckIds: checks,
+              });
+              return res.json({
+                status: 'awaiting_user',
+                uiAction: 'confirmPrint',
+                loanId: args.loanId,
+                selectedCount: checks.length,
+                totalAmount,
+                threadId: resolvedThreadId,
+                runId: run.id,
+                actions,
+              });
+            }
+            if (interactive && name === 'send_lender_notification') {
+              pendingAgentRuns.set(run.id, {
+                threadId: resolvedThreadId,
+                runId: run.id,
+                agentsClient,
+                actions: [...actions],
+                pendingToolCalls: toolCalls,
+                resumeAction: 'lenderNotify',
+                loanId: args.loanId,
+                defaultArgs: args,
+              });
+              return res.json({
+                status: 'awaiting_user',
+                uiAction: 'lenderNotify',
+                loanId: args.loanId,
+                threadId: resolvedThreadId,
+                runId: run.id,
+                actions,
+              });
+            }
+
+            const toolOutputs = [];
+            for (const toolCall of toolCalls) {
+              if (toolCall.type === 'function' && toolCall.function) {
+                const n = toolCall.function.name;
+                const a = JSON.parse(toolCall.function.arguments || '{}');
+                const result = await executeAgentTool(n, a);
+                actions.push({ tool: n, args: a, result });
+                toolOutputs.push({
+                  toolCallId: toolCall.id,
+                  output: typeof result === 'string' ? result : JSON.stringify(result),
+                });
+              }
+            }
+            run = await agentsClient.runs.submitToolOutputs(
+              resolvedThreadId,
+              run.id,
+              toolOutputs
+            );
+          }
+        } else {
+          await new Promise((r) => setTimeout(r, pollIntervalMs));
+          run = await agentsClient.runs.get(resolvedThreadId, run.id);
+        }
+      }
+
+      if (run.status === 'failed' && run.lastError) {
+        return res.status(500).json({
+          error: run.lastError.code || 'run_failed',
+          message: run.lastError.message || 'Agent run failed',
+          threadId: resolvedThreadId,
+          actions,
+        });
+      }
+
+      const messagesIterator = agentsClient.messages.list(resolvedThreadId, { order: 'desc' });
+      let lastAssistantContent = '';
+      for await (const msg of messagesIterator) {
+        if (msg.role === 'assistant' && msg.content) {
+          const textPart = Array.isArray(msg.content)
+            ? msg.content.find((c) => c.type === 'text')
+            : null;
+          if (textPart && textPart.text?.value) {
+            lastAssistantContent = textPart.text.value;
+            break;
+          }
+        }
+      }
+
+      return res.json({
+        message: lastAssistantContent || 'Workflow completed.',
+        threadId: resolvedThreadId,
+        actions,
+      });
+    } catch (error) {
+      console.error('Azure agent error:', error);
+      return res.status(500).json({
+        error: 'agent_error',
+        message: error.message || 'Azure agent request failed',
+        hint: 'Set AZURE_AI_PROJECT_ENDPOINT and AZURE_AI_AGENT_ID. For auth from .env (no az login), set AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET (service principal).',
+      });
+    }
+  }
+});
+
+const OPENAI_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_checks_for_loan',
+      description: 'Get all checks available for printing for a given loan',
+      parameters: {
+        type: 'object',
+        properties: { loanId: { type: 'string', description: 'The loan account ID' } },
+        required: ['loanId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'print_checks',
+      description: 'Submit selected checks for printing',
+      parameters: {
+        type: 'object',
+        properties: {
+          loanId: { type: 'string' },
+          checkIds: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['loanId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'send_lender_notification',
+      description: 'Send lender notification of electronic deposit',
+      parameters: {
+        type: 'object',
+        properties: {
+          loanId: { type: 'string' },
+          transmissionType: { type: 'string' },
+          fromDate: { type: 'string' },
+          toDate: { type: 'string' },
+          envelopeSize: { type: 'string' },
+          replaceBorrowerName: { type: 'boolean' },
+          displayLateCharges: { type: 'boolean' },
+        },
+        required: ['loanId'],
+      },
+    },
+  },
+];
+
+async function handleOpenAIContinue(req, res, pending, { resumeAction, selectedCheckIds, notificationOptions }) {
+  const client = getClient();
+  if (!client) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+
+  let { messages, actions: savedActions, firstToolCall, toolOutputForGetChecks } = pending;
+  const loanId = pending.loanId || JSON.parse(firstToolCall?.function?.arguments || '{}').loanId;
+
+  if (resumeAction === 'selectChecks') {
+    const checksResult = await executeAgentTool('get_checks_for_loan', { loanId });
+    const checks = checksResult?.checks ?? [];
+    const selected = selectedCheckIds ?? [];
+    const selectedChecks = checks.filter((c) => selected.includes(c.id));
+    const totalAmount = selectedChecks.reduce((s, c) => s + (c.payAmount ?? 0), 0);
+    const toolOutput = JSON.stringify({
+      ...checksResult,
+      userSelectedCheckIds: selected,
+      userSelectedCount: selected.length,
+      userSelectedTotalAmount: totalAmount,
+      message: `User selected ${selected.length} check(s) totaling $${totalAmount.toFixed(2)}. Proceed with printing.`,
+    });
+    messages = [
+      ...messages,
+      {
+        role: 'tool',
+        tool_call_id: firstToolCall.id,
+        content: toolOutput,
+      },
+    ];
+    savedActions.push({ tool: 'get_checks_for_loan', args: { loanId }, result: checksResult });
+  }
+
+  if (resumeAction === 'confirmPrint') {
+    const pendingCalls = pending.pendingToolCalls ?? (pending.firstToolCall ? [pending.firstToolCall] : []);
+    const notifyCall = pendingCalls.find((c) => c?.function?.name === 'send_lender_notification');
+    if (notifyCall) {
+      const notifyArgs = JSON.parse(notifyCall.function.arguments || '{}');
+      const synthRunId = `openai-${Date.now()}`;
+      pendingAgentRuns.set(synthRunId, {
+        ...pending,
+        runId: synthRunId,
+        pendingToolCalls: pendingCalls,
+        firstToolCall: notifyCall,
+        loanId: notifyArgs.loanId ?? pending.loanId,
+        defaultArgs: notifyArgs,
+        actions: savedActions,
+      });
+      pendingAgentRuns.delete(pending.runId);
+      return res.json({
+        status: 'awaiting_user',
+        uiAction: 'lenderNotify',
+        loanId: notifyArgs.loanId ?? pending.loanId,
+        threadId: pending.threadId,
+        runId: synthRunId,
+        actions: savedActions,
+      });
+    }
+
+    const tc = pendingCalls.find((c) => c?.function?.name === 'print_checks') ?? pending.firstToolCall;
+    const toolArgs = JSON.parse(tc?.function?.arguments || '{}');
+    const result = await executeAgentTool('print_checks', toolArgs);
+    savedActions.push({ tool: 'print_checks', args: toolArgs, result });
+    messages = [
+      ...messages,
+      { role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) },
+    ];
+
+    const nextResponse = await client.chat.completions.create({
+      model: 'gpt-4o',
+      messages,
+      tools: OPENAI_TOOLS,
+      tool_choice: 'auto',
+    });
+    const nextMsg = nextResponse.choices[0].message;
+
+    if (nextMsg.tool_calls?.length > 0) {
+      const ntc = nextMsg.tool_calls[0];
+      const nname = ntc.function.name;
+      const nargs = JSON.parse(ntc.function.arguments || '{}');
+      if (nname === 'send_lender_notification') {
+        const synthRunId = `openai-${Date.now()}`;
+        pendingAgentRuns.set(synthRunId, {
+          ...pending,
+          runId: synthRunId,
+          messages: [...messages, nextMsg],
+          firstToolCall: ntc,
+          pendingToolCalls: nextMsg.tool_calls,
+          loanId: nargs.loanId,
+          defaultArgs: nargs,
+          actions: savedActions,
+        });
+        pendingAgentRuns.delete(pending.runId);
+        return res.json({
+          status: 'awaiting_user',
+          uiAction: 'lenderNotify',
+          loanId: nargs.loanId,
+          threadId: pending.threadId,
+          runId: synthRunId,
+          actions: savedActions,
+        });
+      }
+    }
+
+    const lastContent = nextMsg.content || 'Workflow completed.';
+    pendingAgentRuns.delete(pending.runId);
+    return res.json({
+      status: 'completed',
+      message: lastContent,
+      threadId: pending.threadId,
+      actions: savedActions,
+    });
+  }
+
+  if (resumeAction === 'selectChecks') {
+    const checksResult = await executeAgentTool('get_checks_for_loan', { loanId });
+    const checks = checksResult?.checks ?? [];
+    const selected = selectedCheckIds ?? [];
+    const selectedChecks = checks.filter((c) => selected.includes(c.id));
+    const totalAmount = selectedChecks.reduce((s, c) => s + (c.payAmount ?? 0), 0);
+    const toolOutput = JSON.stringify({
+      ...checksResult,
+      userSelectedCheckIds: selected,
+      userSelectedCount: selected.length,
+      userSelectedTotalAmount: totalAmount,
+      message: `User selected ${selected.length} check(s) totaling $${totalAmount.toFixed(2)}. Proceed with printing.`,
+    });
+    messages = [
+      ...messages,
+      { role: 'tool', tool_call_id: firstToolCall.id, content: toolOutput },
+    ];
+    savedActions.push({ tool: 'get_checks_for_loan', args: { loanId }, result: checksResult });
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
+      messages,
+      tools: OPENAI_TOOLS,
+      tool_choice: 'auto',
+    });
+    const assistantMessage = response.choices[0].message;
+
+    if (assistantMessage.tool_calls?.length > 0) {
+      const tc = assistantMessage.tool_calls[0];
+      const toolName = tc.function.name;
+      const toolArgs = JSON.parse(tc.function.arguments || '{}');
+
+      if (toolName === 'print_checks') {
+        const checks = (await executeAgentTool('get_checks_for_loan', { loanId }))?.checks ?? [];
+        const byId = new Map(checks.map((c) => [c.id, c]));
+        const totalAmount = (toolArgs.checkIds ?? []).reduce((s, id) => s + (byId.get(id)?.payAmount ?? 0), 0);
+        const synthRunId = `openai-${Date.now()}`;
+        pendingAgentRuns.set(synthRunId, {
+          ...pending,
+          runId: synthRunId,
+          messages: [...messages, assistantMessage],
+          firstToolCall: tc,
+          pendingToolCalls: assistantMessage.tool_calls,
+          loanId: toolArgs.loanId,
+          actions: savedActions,
+        });
+        pendingAgentRuns.delete(pending.runId);
+        return res.json({
+          status: 'awaiting_user',
+          uiAction: 'confirmPrint',
+          loanId: toolArgs.loanId,
+          selectedCount: (toolArgs.checkIds ?? []).length,
+          totalAmount,
+          threadId: pending.threadId,
+          runId: synthRunId,
+          actions: savedActions,
+        });
+      }
+    }
+
+    return res.json({
+      status: 'completed',
+      message: assistantMessage.content || 'Workflow completed.',
+      threadId: pending.threadId,
+      actions: savedActions,
+    });
+  }
+
+  if (resumeAction === 'lenderNotify') {
+    const pendingCalls = pending.pendingToolCalls ?? (pending.firstToolCall ? [pending.firstToolCall] : []);
+    const toolMessages = [];
+
+    for (const toolCall of pendingCalls) {
+      const name = toolCall?.function?.name;
+      const parsedArgs = JSON.parse(toolCall?.function?.arguments || '{}');
+
+      if (name === 'print_checks') {
+        const result = await executeAgentTool('print_checks', parsedArgs);
+        savedActions.push({ tool: 'print_checks', args: parsedArgs, result });
+        toolMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify(result) });
+        continue;
+      }
+
+      if (name === 'send_lender_notification') {
+        const args = {
+          loanId: parsedArgs.loanId ?? pending.loanId ?? loanId,
+          transmissionType: notificationOptions?.transmissionType ?? parsedArgs.transmissionType ?? 'transmission_date',
+          fromDate: notificationOptions?.fromDate ?? parsedArgs.fromDate ?? new Date().toISOString().split('T')[0],
+          toDate: notificationOptions?.toDate ?? parsedArgs.toDate ?? new Date().toISOString().split('T')[0],
+          envelopeSize: notificationOptions?.envelopeSize ?? parsedArgs.envelopeSize ?? 'standard',
+          replaceBorrowerName: notificationOptions?.replaceBorrowerName ?? parsedArgs.replaceBorrowerName ?? false,
+          displayLateCharges: notificationOptions?.displayLateCharges ?? parsedArgs.displayLateCharges ?? false,
+        };
+        const result = await executeAgentTool('send_lender_notification', args);
+        savedActions.push({ tool: 'send_lender_notification', args, result });
+        toolMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify(result) });
+        continue;
+      }
+
+      const result = await executeAgentTool(name, parsedArgs);
+      savedActions.push({ tool: name, args: parsedArgs, result });
+      toolMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify(result) });
+    }
+
+    messages = [...messages, ...toolMessages];
+
+    const finalResponse = await client.chat.completions.create({
+      model: 'gpt-4o',
+      messages,
+      tools: OPENAI_TOOLS,
+      tool_choice: 'auto',
+    });
+    const finalMsg = finalResponse.choices[0].message;
+    const lastContent = finalMsg.content || 'Workflow completed.';
+
+    pendingAgentRuns.delete(pending.runId);
+    return res.json({
+      status: 'completed',
+      message: lastContent,
+      threadId: pending.threadId,
+      actions: savedActions,
+    });
+  }
+
+  return res.status(400).json({ error: 'Invalid resumeAction' });
+}
+
+/**
+ * @swagger
+ * /api/agent/continue:
+ *   post:
+ *     summary: Continue agent run after user completed a modal step
+ *     tags: [Agent]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               threadId:
+ *                 type: string
+ *               runId:
+ *                 type: string
+ *               resumeAction:
+ *                 type: string
+ *                 enum: [selectChecks, confirmPrint, lenderNotify]
+ *               selectedCheckIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               notificationOptions:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Agent continued; may return completed or another awaiting_user
+ */
+app.post('/api/agent/continue', async (req, res) => {
+  const { threadId, runId, resumeAction, selectedCheckIds, notificationOptions } = req.body;
+
+  const pending = pendingAgentRuns.get(runId);
+  if (!pending) {
+    return res.status(404).json({ error: 'No pending run found', hint: 'Session may have expired. Start the workflow again.' });
+  }
+
+  if (pending.mode === 'openai') {
+    return handleOpenAIContinue(req, res, pending, { resumeAction, selectedCheckIds, notificationOptions });
+  }
+
+  const { agentsClient, actions: savedActions, pendingToolCalls } = pending;
+  let run;
+
+  try {
+    if (resumeAction === 'selectChecks') {
+      const toolOutputs = [];
+      for (const toolCall of pendingToolCalls) {
+        const name = toolCall?.function?.name;
+        const args = JSON.parse(toolCall?.function?.arguments || '{}');
+        if (name === 'get_checks_for_loan') {
+          const checksResult = await executeAgentTool('get_checks_for_loan', args);
+          const checks = checksResult?.checks ?? [];
+          const selected = selectedCheckIds ?? [];
+          const selectedChecks = checks.filter((c) => selected.includes(c.id));
+          const totalAmount = selectedChecks.reduce((s, c) => s + (c.payAmount ?? 0), 0);
+          const output = JSON.stringify({
+            ...checksResult,
+            userSelectedCheckIds: selected,
+            userSelectedCount: selected.length,
+            userSelectedTotalAmount: totalAmount,
+            message: `User selected ${selected.length} check(s) totaling $${totalAmount.toFixed(2)}. Proceed with printing.`,
+          });
+          toolOutputs.push({ toolCallId: toolCall.id, output });
+          continue;
+        }
+        const result = await executeAgentTool(name, args);
+        savedActions.push({ tool: name, args, result });
+        toolOutputs.push({ toolCallId: toolCall.id, output: JSON.stringify(result) });
+      }
+      run = await agentsClient.runs.submitToolOutputs(threadId, runId, toolOutputs);
+      pendingAgentRuns.delete(runId);
+    } else if (resumeAction === 'confirmPrint') {
+      const notifyCall = pendingToolCalls.find((c) => c?.function?.name === 'send_lender_notification');
+      if (notifyCall) {
+        const notifyArgs = JSON.parse(notifyCall.function.arguments || '{}');
+        pendingAgentRuns.set(runId, {
+          ...pending,
+          runId,
+          threadId,
+          agentsClient,
+          actions: savedActions,
+          pendingToolCalls,
+          resumeAction: 'lenderNotify',
+          loanId: notifyArgs.loanId ?? pending.loanId,
+          defaultArgs: notifyArgs,
+        });
+        return res.json({
+          status: 'awaiting_user',
+          uiAction: 'lenderNotify',
+          loanId: notifyArgs.loanId ?? pending.loanId,
+          threadId,
+          runId,
+          actions: savedActions,
+        });
+      }
+
+      const toolOutputs = [];
+      for (const toolCall of pendingToolCalls) {
+        const name = toolCall?.function?.name;
+        const args = JSON.parse(toolCall?.function?.arguments || '{}');
+        const result = await executeAgentTool(name, args);
+        savedActions.push({ tool: name, args, result });
+        toolOutputs.push({ toolCallId: toolCall.id, output: JSON.stringify(result) });
+      }
+      run = await agentsClient.runs.submitToolOutputs(threadId, runId, toolOutputs);
+      pendingAgentRuns.delete(runId);
+    } else if (resumeAction === 'lenderNotify') {
+      const toolOutputs = [];
+      for (const toolCall of pendingToolCalls) {
+        const name = toolCall?.function?.name;
+        const parsedArgs = JSON.parse(toolCall?.function?.arguments || '{}');
+        if (name === 'send_lender_notification') {
+          const args = {
+            loanId: parsedArgs.loanId ?? pending.loanId,
+            transmissionType: notificationOptions?.transmissionType ?? parsedArgs.transmissionType ?? 'transmission_date',
+            fromDate: notificationOptions?.fromDate ?? parsedArgs.fromDate ?? new Date().toISOString().split('T')[0],
+            toDate: notificationOptions?.toDate ?? parsedArgs.toDate ?? new Date().toISOString().split('T')[0],
+            envelopeSize: notificationOptions?.envelopeSize ?? parsedArgs.envelopeSize ?? 'standard',
+            replaceBorrowerName: notificationOptions?.replaceBorrowerName ?? parsedArgs.replaceBorrowerName ?? false,
+            displayLateCharges: notificationOptions?.displayLateCharges ?? parsedArgs.displayLateCharges ?? false,
+          };
+          const result = await executeAgentTool('send_lender_notification', args);
+          savedActions.push({ tool: 'send_lender_notification', args, result });
+          toolOutputs.push({ toolCallId: toolCall.id, output: JSON.stringify(result) });
+          continue;
+        }
+        const result = await executeAgentTool(name, parsedArgs);
+        savedActions.push({ tool: name, args: parsedArgs, result });
+        toolOutputs.push({ toolCallId: toolCall.id, output: JSON.stringify(result) });
+      }
+      run = await agentsClient.runs.submitToolOutputs(threadId, runId, toolOutputs);
+      pendingAgentRuns.delete(runId);
+    } else {
+      return res.status(400).json({ error: 'Invalid resumeAction' });
+    }
+  } catch (err) {
+    console.error('Agent continue error:', err);
+    return res.status(500).json({ error: err.message || 'Continue failed' });
+  }
+
+  const pollIntervalMs = 1000;
+  const maxWaitMs = 60000;
+  const start = Date.now();
+
+  while (Date.now() - start < maxWaitMs) {
+    if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
+      break;
+    }
+
+    if (run.status === 'requires_action') {
+      const action = run.requiredAction;
+      if (action?.type === 'submit_tool_outputs' && action.submitToolOutputs?.toolCalls?.length) {
+        const toolCalls = action.submitToolOutputs.toolCalls;
+        const printCall = toolCalls.find((c) => c?.function?.name === 'print_checks');
+        const notifyCall = toolCalls.find((c) => c?.function?.name === 'send_lender_notification');
+
+        if (printCall) {
+          const toolArgs = JSON.parse(printCall?.function?.arguments || '{}');
+          let totalAmount = 0;
+          try {
+            const cr = await executeAgentTool('get_checks_for_loan', { loanId: toolArgs.loanId });
+            const byId = new Map((cr?.checks ?? []).map((c) => [c.id, c]));
+            totalAmount = (toolArgs.checkIds ?? []).reduce((s, id) => s + (byId.get(id)?.payAmount ?? 0), 0);
+          } catch {
+            totalAmount = 0;
+          }
+          pendingAgentRuns.set(run.id, {
+            threadId,
+            runId: run.id,
+            agentsClient,
+            actions: savedActions,
+            pendingToolCalls: toolCalls,
+            resumeAction: 'confirmPrint',
+            loanId: toolArgs.loanId,
+            printCheckIds: toolArgs.checkIds ?? [],
+          });
+          return res.json({
+            status: 'awaiting_user',
+            uiAction: 'confirmPrint',
+            loanId: toolArgs.loanId,
+            selectedCount: (toolArgs.checkIds ?? []).length,
+            totalAmount,
+            threadId,
+            runId: run.id,
+            actions: savedActions,
+          });
+        }
+
+        if (notifyCall) {
+          const toolArgs = JSON.parse(notifyCall?.function?.arguments || '{}');
+          pendingAgentRuns.set(run.id, {
+            threadId,
+            runId: run.id,
+            agentsClient,
+            actions: savedActions,
+            pendingToolCalls: toolCalls,
+            resumeAction: 'lenderNotify',
+            loanId: toolArgs.loanId,
+            defaultArgs: toolArgs,
+          });
+          return res.json({
+            status: 'awaiting_user',
+            uiAction: 'lenderNotify',
+            loanId: toolArgs.loanId,
+            threadId,
+            runId: run.id,
+            actions: savedActions,
+          });
+        }
+
+        const toolOutputs = [];
+        for (const tc of toolCalls) {
+          const toolName = tc?.function?.name;
+          const toolArgs = JSON.parse(tc?.function?.arguments || '{}');
+          const result = await executeAgentTool(toolName, toolArgs);
+          savedActions.push({ tool: toolName, args: toolArgs, result });
+          toolOutputs.push({ toolCallId: tc.id, output: JSON.stringify(result) });
+        }
+        run = await agentsClient.runs.submitToolOutputs(threadId, run.id, toolOutputs);
+      }
+    } else {
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+      run = await agentsClient.runs.get(threadId, run.id);
+    }
+  }
+
+  if (run.status === 'failed' && run.lastError) {
+    return res.status(500).json({
+      error: run.lastError.code || 'run_failed',
+      message: run.lastError.message || 'Agent run failed',
+      threadId,
+      actions: savedActions,
+    });
+  }
+
+  let lastAssistantContent = '';
+  const messagesIterator = agentsClient.messages.list(threadId, { order: 'desc' });
+  for await (const msg of messagesIterator) {
+    if (msg.role === 'assistant' && msg.content) {
+      const textPart = Array.isArray(msg.content) ? msg.content.find((c) => c.type === 'text') : null;
+      if (textPart?.text?.value) {
+        lastAssistantContent = textPart.text.value;
+        break;
+      }
+    }
+  }
+
+  return res.json({
+    status: 'completed',
+    message: lastAssistantContent || 'Workflow completed.',
+    threadId,
+    actions: savedActions,
+  });
 });
 
 app.use(express.static(join(__dirname, 'dist')));

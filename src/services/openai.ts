@@ -3,6 +3,25 @@ import { mockAISummary, mockAIInsights, mockSentiment, mockKeyTakeaway } from '.
 
 const API_BASE = '/api';
 
+export interface AgentAction {
+  tool: string;
+  args: Record<string, unknown>;
+  result: Record<string, unknown>;
+}
+
+export interface AgentResponse {
+  message: string;
+  threadId: string;
+  actions: AgentAction[];
+  status?: 'awaiting_user' | 'completed';
+  uiAction?: 'selectChecks' | 'confirmPrint' | 'lenderNotify';
+  loanId?: string;
+  checks?: Array<{ id: string; payAmount?: number; [key: string]: unknown }>;
+  selectedCount?: number;
+  totalAmount?: number;
+  runId?: string;
+}
+
 export interface Scenario {
   id: string;
   name: string;
@@ -179,5 +198,116 @@ export async function generateReportData(
       sections: [],
       recommendations: [],
     };
+  }
+}
+
+export async function chatWithAgent(
+  message: string,
+  threadId?: string,
+  options?: { interactive?: boolean }
+): Promise<AgentResponse> {
+  try {
+    const response = await fetch(`${API_BASE}/agent/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        threadId,
+        interactive: options?.interactive ?? false,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      let serverMessage = `Agent request failed (${response.status})`;
+      try {
+        const errorData = JSON.parse(text);
+        serverMessage = errorData.message || errorData.error || serverMessage;
+      } catch {
+        if (text.length < 200 && !text.trimStart().startsWith('<')) {
+          serverMessage = text || serverMessage;
+        } else if (response.status === 404 || response.status === 502) {
+          serverMessage = 'Backend not reachable. Run "npm run server" in a separate terminal (port 3000).';
+        }
+      }
+      throw new Error(serverMessage);
+    }
+
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error('Invalid response from server');
+    }
+  } catch (error) {
+    console.error('Error chatting with agent:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isNetworkError =
+      errorMessage.includes('fetch') ||
+      errorMessage.includes('Failed to fetch') ||
+      errorMessage.includes('NetworkError') ||
+      errorMessage.includes('JSON.parse');
+    const suggestion = isNetworkError
+      ? ' Make sure the backend is running: run "npm run server" in a separate terminal (port 3000).'
+      : '';
+    return {
+      message: `I couldn't complete your workflow request. ${errorMessage}.${suggestion}`,
+      threadId: threadId || '',
+      actions: [],
+    };
+  }
+}
+
+export async function automateWorkflow(
+  loanId: string,
+  action: 'print_and_notify' | 'print_only' | 'notify_only' = 'print_and_notify'
+): Promise<AgentResponse> {
+  const prompts = {
+    print_and_notify: `Print all available checks for loan ${loanId} and send the lender notification with default options.`,
+    print_only: `Print all available checks for loan ${loanId}.`,
+    notify_only: `Send a lender notification for loan ${loanId} with default options.`,
+  };
+
+  const useInteractive = action === 'print_and_notify';
+  return chatWithAgent(prompts[action], undefined, { interactive: useInteractive });
+}
+
+export async function continueAgentFlow(payload: {
+  threadId: string;
+  runId: string;
+  resumeAction: 'selectChecks' | 'confirmPrint' | 'lenderNotify';
+  selectedCheckIds?: string[];
+  notificationOptions?: {
+    transmissionType?: string;
+    fromDate?: string;
+    toDate?: string;
+    envelopeSize?: string;
+    replaceBorrowerName?: boolean;
+    displayLateCharges?: boolean;
+  };
+}): Promise<AgentResponse> {
+  const response = await fetch(`${API_BASE}/agent/continue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: response.statusText }));
+    throw new Error(err.message || err.error || 'Continue failed');
+  }
+
+  return response.json();
+}
+
+export async function resetWorkflowState(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE}/workflow/reset`, {
+      method: 'POST',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error resetting workflow state:', error);
+    return false;
   }
 }

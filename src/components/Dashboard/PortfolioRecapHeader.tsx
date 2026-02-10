@@ -21,7 +21,8 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { FileText } from 'lucide-react';
 import type { Scenario } from '../../services/openai';
-import type { PortfolioData } from '../../types';
+import type { PortfolioData, Sentiment, DashboardSnapshot } from '../../types';
+import type { DashboardCardConfig } from '../../types/dashboardConfig';
 import CardBox from './CardBox';
 import ReportViewerModal from './ReportViewerModal';
 import { MONTHS, getDefaultYears } from '../../constants/periods';
@@ -42,6 +43,9 @@ interface PortfolioRecapHeaderProps {
   loading?: boolean;
   portfolioData?: PortfolioData;
   historicalData?: PortfolioData[];
+  scenarioSentiment?: Sentiment;
+  dashboardCards?: DashboardCardConfig[];
+  dashboardSnapshot?: DashboardSnapshot | null;
   onCustomize?: () => void;
 }
 
@@ -62,6 +66,9 @@ export default function PortfolioRecapHeader({
   loading = false,
   portfolioData,
   historicalData = [],
+  scenarioSentiment,
+  dashboardCards = [],
+  dashboardSnapshot,
   onCustomize,
 }: PortfolioRecapHeaderProps) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -349,6 +356,9 @@ export default function PortfolioRecapHeader({
           onClose={() => setReportModalOpen(false)}
           portfolioData={portfolioData}
           historicalData={historicalData}
+          scenarioSentiment={scenarioSentiment}
+          dashboardCards={dashboardCards}
+          dashboardSnapshot={dashboardSnapshot}
         />
       )}
     </CardBox>

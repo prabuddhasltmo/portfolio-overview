@@ -31,7 +31,7 @@ export interface ActionItem {
   borrower: string;
   borrowerEmail?: string;
   priority: 'High' | 'Medium' | 'Low';
-  category?: 'Checks Due' | 'Pending Billing' | 'Payment Adjustments';
+  category?: 'Checks Due' | 'Delinquent Loans' | 'Pending Billing' | 'Payment Adjustments' | 'Send Payment Statements';
   amount: number;
   daysPastDue: number;
 }
@@ -55,6 +55,13 @@ export interface AIInsight {
   title: string;
   description: string;
   category: 'Performance' | 'Delinquency' | 'Risk' | 'Opportunity';
+}
+
+/** Snapshot of AI-generated dashboard content for report (no refetch). */
+export interface DashboardSnapshot {
+  summary: string;
+  keyTakeaway: string;
+  insights: AIInsight[];
 }
 
 export type Sentiment = 'good' | 'neutral' | 'bad';

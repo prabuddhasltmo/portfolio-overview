@@ -48,6 +48,7 @@ export default function AskAIChat({
     'Which loans need attention?',
   ]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const handleSendRef = useRef<(question?: string) => Promise<void>>();
 
   const borrowerLookup = useMemo(() => {
     const map = new Map<string, ActionItem>();
@@ -144,6 +145,21 @@ export default function AskAIChat({
       setLoading(false);
     }
   };
+  handleSendRef.current = handleSend;
+
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const customEvent = event as CustomEvent<{ question?: string }>;
+      const question = customEvent.detail?.question?.trim();
+      if (question) {
+        handleSendRef.current?.(question);
+      }
+    };
+    window.addEventListener('ask-ai-request', listener as EventListener);
+    return () => {
+      window.removeEventListener('ask-ai-request', listener as EventListener);
+    };
+  }, []);
 
   const handleClear = () => {
     setMessages([]);
@@ -175,9 +191,10 @@ export default function AskAIChat({
         transition: 'min-height 0.3s ease-in-out',
       }}
     >
-      <Box
-        sx={{
-          display: 'flex',
+    <Box
+      id="ask-ai-chat"
+      sx={{
+        display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}

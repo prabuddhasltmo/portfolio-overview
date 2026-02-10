@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Chip,
-  Button,
   Checkbox,
   Collapse,
   Menu,
@@ -13,6 +12,7 @@ import {
   Divider,
   IconButton,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
@@ -25,10 +25,14 @@ import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsAc
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import type { ActionItem } from '../../types';
 import type { EmailDraftContext } from '../../types/email';
 import type { ReportMockupContext, ReportMockupType } from '../../types/reportMockup';
 import CardBox from './CardBox';
+import { useAgentWorkflow } from '../../contexts/AgentWorkflowContext';
+import { automateWorkflow } from '../../services/openai';
 
 interface ActionItemsProps {
   items: ActionItem[];
@@ -64,26 +68,45 @@ const REPORT_OPTIONS: { type: ReportMockupType; label: string; icon: React.React
   { type: 'escrow_analysis', label: 'Escrow analysis', icon: <AccountBalanceOutlinedIcon fontSize="small" /> },
 ];
 
-const CATEGORY_ORDER = ['Checks Due', 'Pending Billing', 'Payment Adjustments'] as const;
+const CATEGORY_ORDER = [
+  'Checks Due',
+  'Delinquent Loans',
+  'Pending Billing',
+  'Payment Adjustments',
+  'Send Payment Statements',
+] as const;
 
 type ActionCategory = typeof CATEGORY_ORDER[number];
 
 const getCategoryForItem = (item: ActionItem): ActionCategory => {
-  if (item.category === 'Checks Due' || item.category === 'Pending Billing' || item.category === 'Payment Adjustments') {
+  if (
+    item.category === 'Checks Due' ||
+    item.category === 'Delinquent Loans' ||
+    item.category === 'Pending Billing' ||
+    item.category === 'Payment Adjustments' ||
+    item.category === 'Send Payment Statements'
+  ) {
     return item.category;
   }
+  // Fallback logic based on days past due
   if (item.daysPastDue >= 90) return 'Checks Due';
-  if (item.daysPastDue >= 60) return 'Pending Billing';
-  return 'Payment Adjustments';
+  if (item.daysPastDue >= 60) return 'Delinquent Loans';
+  if (item.daysPastDue >= 30) return 'Pending Billing';
+  if (item.daysPastDue > 0) return 'Payment Adjustments';
+  return 'Send Payment Statements';
 };
 
 const getEmailTypeForCategory = (category: ActionCategory): EmailDraftContext['emailType'] => {
   switch (category) {
     case 'Checks Due':
       return 'checks_due';
+    case 'Delinquent Loans':
+      return 'collection_followup';
     case 'Pending Billing':
       return 'pending_billing';
     case 'Payment Adjustments':
+      return 'payment_adjustment';
+    case 'Send Payment Statements':
     default:
       return 'payment_adjustment';
   }
@@ -122,15 +145,51 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedCategories, setExpandedCategories] = useState<Record<ActionCategory, boolean>>({
     'Checks Due': false,
+    'Delinquent Loans': false,
     'Pending Billing': false,
     'Payment Adjustments': false,
+    'Send Payment Statements': false,
   });
+  const workflow = useAgentWorkflow();
+  const { automatingLoanId, setAutomatingLoanId } = workflow;
+
+  const handleAutomate = async (loanId: string, borrower: string) => {
+    setAutomatingLoanId(loanId);
+    try {
+      const result = await automateWorkflow(loanId, 'print_and_notify');
+
+      if (result.status === 'awaiting_user' && result.uiAction) {
+        workflow.openFromAgentResponse(result, borrower, {
+          autoAdvanceSelectChecks: result.uiAction === 'selectChecks',
+          autoAdvanceConfirm: true,
+          autoAdvanceLenderNotify: true,
+        });
+        return;
+      }
+
+      const actionCount = result.actions?.length || 0;
+      const message =
+        actionCount > 0
+          ? `Workflow completed: ${actionCount} action(s) performed for ${loanId}`
+          : result.message || 'Workflow completed successfully';
+      workflow.showSnackbar(message, 'success');
+    } catch (error) {
+      workflow.showSnackbar(
+        `Failed to automate workflow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    } finally {
+      setAutomatingLoanId(null);
+    }
+  };
 
   const groupedItems = useMemo(() => {
     const grouped: Record<ActionCategory, ActionItem[]> = {
       'Checks Due': [],
+      'Delinquent Loans': [],
       'Pending Billing': [],
       'Payment Adjustments': [],
+      'Send Payment Statements': [],
     };
     items.forEach((item) => {
       grouped[getCategoryForItem(item)].push(item);
@@ -203,6 +262,10 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
       accent: theme.palette.error.main,
       helper: 'Disbursements waiting approval',
     },
+    'Delinquent Loans': {
+      accent: theme.palette.error.dark,
+      helper: 'Loans requiring collection follow-up',
+    },
     'Pending Billing': {
       accent: theme.palette.warning.main,
       helper: 'Invoices and payoffs to process',
@@ -210,6 +273,10 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
     'Payment Adjustments': {
       accent: theme.palette.info.main,
       helper: 'Rate and payment updates',
+    },
+    'Send Payment Statements': {
+      accent: theme.palette.success.main,
+      helper: 'Statements ready to send',
     },
   };
 
@@ -249,29 +316,48 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
             </Box>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<SummarizeOutlinedIcon sx={{ fontSize: 18 }} />}
-              disabled={!onReportGenerate || selectedItems.length === 0}
-              onClick={(e) => handleReportsButtonClick(e, selectedItems)}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                borderColor: alpha(blueColor, 0.3),
-                color: blueColor,
-                '&:hover': {
-                  borderColor: alpha(blueColor, 0.5),
-                  backgroundColor: alpha(blueColor, 0.06),
-                },
-                '&.Mui-disabled': {
-                  borderColor: neutral?.[200],
-                  color: neutral?.[400],
-                },
-              }}
-            >
-              Generate report
-            </Button>
+            {onMessageClick && (
+              <Tooltip title={selectedItems.length > 0 ? `Send message (${selectedItems.length})` : 'Select items to send message'}>
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={selectedItems.length === 0}
+                    onClick={() => {
+                      if (selectedItems.length > 0) {
+                        onMessageClick(buildMessageContext(selectedItems[0]));
+                      }
+                    }}
+                    sx={{
+                      color: selectedItems.length > 0 ? blueColor : neutral?.[400],
+                      backgroundColor: selectedItems.length > 0 ? alpha(blueColor, 0.1) : 'transparent',
+                      '&:hover': { backgroundColor: alpha(blueColor, 0.2) },
+                      '&.Mui-disabled': { color: neutral?.[400] },
+                    }}
+                  >
+                    <SendIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+            {onReportGenerate && (
+              <Tooltip title={selectedItems.length > 0 ? `Generate report (${selectedItems.length})` : 'Select items to generate report'}>
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={selectedItems.length === 0}
+                    onClick={(e) => handleReportsButtonClick(e, selectedItems)}
+                    sx={{
+                      color: selectedItems.length > 0 ? blueColor : neutral?.[400],
+                      backgroundColor: selectedItems.length > 0 ? alpha(blueColor, 0.1) : 'transparent',
+                      '&:hover': { backgroundColor: alpha(blueColor, 0.2) },
+                      '&.Mui-disabled': { color: neutral?.[400] },
+                    }}
+                  >
+                    <SummarizeOutlinedIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
           </Box>
         </Box>
 
@@ -396,7 +482,7 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
                                 Follow up on {item.daysPastDue}+ days past due.
                               </Typography>
                             </Box>
-                            <Box sx={{ textAlign: 'right', flexShrink: 0, minWidth: 120 }}>
+                            <Box sx={{ textAlign: 'right', flexShrink: 0, minWidth: 100 }}>
                               <Typography sx={{ fontSize: '14px', fontWeight: 600, color: neutral?.[900], lineHeight: '20px' }}>
                                 {formatCurrency(item.amount)}
                               </Typography>
@@ -404,14 +490,14 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
                                 {item.daysPastDue} days past due
                               </Typography>
                             </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              {onMessageClick && (
-                                <Tooltip title="Send message" placement="top">
+                            {category === 'Checks Due' && (
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <Tooltip title="Select & Print Checks">
                                   <IconButton
                                     size="small"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      onMessageClick(buildMessageContext(item));
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      workflow.openPrintChecksModal(item.id, item.borrower);
                                     }}
                                     sx={{
                                       color: blueColor,
@@ -419,33 +505,37 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
                                       '&:hover': { backgroundColor: alpha(blueColor, 0.2) },
                                     }}
                                   >
-                                    <SendIcon sx={{ fontSize: 16 }} />
+                                    <PrintOutlinedIcon sx={{ fontSize: 16 }} />
                                   </IconButton>
                                 </Tooltip>
-                              )}
-                              {onReportGenerate && (
-                                <Tooltip title="Generate report" placement="top">
-                                  <IconButton
-                                    size="small"
-                                    onClick={(event) => {
-                                      setSelectedIds((prev) => {
-                                        const next = new Set(prev);
-                                        next.add(item.id);
-                                        return next;
-                                      });
-                                      handleReportsButtonClick(event, [item]);
-                                    }}
-                                    sx={{
-                                      color: blueColor,
-                                      backgroundColor: alpha(blueColor, 0.1),
-                                      '&:hover': { backgroundColor: alpha(blueColor, 0.2) },
-                                    }}
-                                  >
-                                    <SummarizeOutlinedIcon sx={{ fontSize: 16 }} />
-                                  </IconButton>
+                                <Tooltip title="Automate: Print & Notify">
+                                  <span>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAutomate(item.id, item.borrower);
+                                      }}
+                                      disabled={automatingLoanId === item.id}
+                                      sx={{
+                                        color: theme.palette.warning.main,
+                                        backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                                        '&:hover': { backgroundColor: alpha(theme.palette.warning.main, 0.2) },
+                                        '&.Mui-disabled': {
+                                          backgroundColor: alpha(theme.palette.warning.main, 0.05),
+                                        },
+                                      }}
+                                    >
+                                      {automatingLoanId === item.id ? (
+                                        <CircularProgress size={14} color="inherit" />
+                                      ) : (
+                                        <SmartToyOutlinedIcon sx={{ fontSize: 16 }} />
+                                      )}
+                                    </IconButton>
+                                  </span>
                                 </Tooltip>
-                              )}
-                            </Box>
+                              </Box>
+                            )}
                           </Box>
                         );
                       })
@@ -544,6 +634,7 @@ export default function ActionItems({ items, onMessageClick, onReportGenerate }:
           </MenuItem>
         ))}
       </Menu>
+
     </CardBox>
   );
 }

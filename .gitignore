@@ -5,3 +5,6 @@ dist
 lib/**/*.js
 mcp/**/*.js
 dist-tools/
+
+# JetBrains / IntelliJ IDE
+.idea/
